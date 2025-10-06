@@ -132,6 +132,31 @@
             "extends": []
         },
         {
+            "name": "ResetObject",
+            "id": "interface-ResetObject-8df741c7dd4525e455b609c7eb812b065cb877c52b4e223cc4a51a774e1d2fb6bdb59cd44911219b8a91eb550728bf9f544aaf2dfd2ec3219b285f943f93253e",
+            "file": "src/app/_components/color-slider/color-slider.component.ts",
+            "deprecated": false,
+            "deprecationMessage": "",
+            "type": "interface",
+            "sourceCode": "import { Component, input, Output, EventEmitter, inject, effect } from '@angular/core';\r\nimport { CommonModule } from '@angular/common';\r\nimport { ColorUtilService } from '../../services/color-util.service';\r\n\r\nexport interface ResetObject {\r\n  reset: true;\r\n}\r\n\r\n@Component({\r\n  selector: 'app-color-slider',\r\n  templateUrl: './color-slider.component.html',\r\n  styleUrls: ['./color-slider.component.scss'],\r\n  imports: [CommonModule],\r\n  standalone: true,\r\n})\r\nexport class ColorSliderComponent {\r\n  id = input<string | 'slider-0'>('slider-0');\r\n  name = input<string | 'color-slider'>('color-slider');\r\n  color = input<string>('');\r\n  constantChroma = input<boolean>(false);\r\n  showGradient = input<boolean>(false);\r\n  resetSlider = input<ResetObject | null>(null);\r\n  debug = input<boolean>(false);\r\n\r\n  @Output() colorVariant = new EventEmitter<string | null>();\r\n\r\n  cus = inject(ColorUtilService);\r\n\r\n  devColorVariant: string = '';\r\n\r\n  slideInterval: number = NaN;\r\n  slideMin: number = NaN;\r\n  slideMax: number = NaN;\r\n  initValue: number = NaN;\r\n  value: number = NaN;\r\n\r\n  constructor() {\r\n    effect(() => {\r\n      const boundColor = this.color();\r\n      const showGradient = this.showGradient();\r\n      const resetSlider = this.resetSlider();\r\n      const debug = this.debug();\r\n\r\n      if (boundColor) {\r\n        this.getAndSetLightnessRange(boundColor, {\r\n          constantChroma: this.constantChroma(),\r\n        });\r\n      } else {\r\n        if (debug) {\r\n          console.warn(`no color specified to comp`);\r\n        }\r\n      }\r\n\r\n      if (showGradient) {\r\n        this.gradient('on');\r\n      }\r\n\r\n      if (!showGradient) {\r\n        this.gradient('off');\r\n      }\r\n\r\n      if (resetSlider && this.initValue) {\r\n        this.reset();\r\n      }\r\n    });\r\n  }\r\n\r\n  sendInitialLightVariant() {\r\n    const color = this.color();\r\n\r\n    // Good UX to just send the input color?\r\n    this.colorVariant.emit(color);\r\n\r\n    if (this.debug()) {\r\n      this.devColorVariant = color;\r\n    }\r\n  }\r\n\r\n  async getAndSetLightnessRange(color: string, options?: { constantChroma: boolean }) {\r\n    const rangeObject = await this.cus.getMinMaxLight(color);\r\n\r\n    if (rangeObject) {\r\n      this.sendInitialLightVariant();\r\n\r\n      this.slideMin = 0;\r\n      this.slideMax = 1;\r\n\r\n      if (options?.constantChroma) {\r\n        this.slideMin = rangeObject.lightMin;\r\n\r\n        this.slideMax = rangeObject.lightMax;\r\n      }\r\n\r\n      this.slideInterval = (this.slideMax - this.slideMin) / 80;\r\n\r\n      const lightnessIndex = 0;\r\n      const initialSlideValue = rangeObject.originalCoords[lightnessIndex];\r\n\r\n      this.initValue = initialSlideValue;\r\n\r\n      this.value = initialSlideValue;\r\n\r\n      this.redefineGradientStops(this.slideMin, this.slideMax);\r\n    } else {\r\n      console.error(`no range object for slider`);\r\n    }\r\n  }\r\n\r\n  handleSliding(event: Event) {\r\n    const inputElem = event.target as HTMLInputElement;\r\n\r\n    if (inputElem) {\r\n      const lightValue = parseFloat(inputElem.value);\r\n\r\n      const boundColor = this.color();\r\n\r\n      if (boundColor) {\r\n        const lightnessVariant = this.cus.createSrgbColor(boundColor, lightValue);\r\n\r\n        if (this.debug()) {\r\n          console.log(`slide modding ${this.color} to ${lightnessVariant}`);\r\n\r\n          this.devColorVariant = !lightnessVariant ? '' : lightnessVariant;\r\n        }\r\n\r\n        this.colorVariant.emit(lightnessVariant);\r\n      } else {\r\n        console.error(`no color specified`);\r\n      }\r\n    }\r\n  }\r\n\r\n  reset() {\r\n    const compId = this.id();\r\n\r\n    // TODO: Isn't there an angular way to do this?\r\n    const element = document.getElementById(compId) as HTMLInputElement;\r\n\r\n    if (this.initValue) {\r\n      element.value = this.initValue.toString();\r\n    } else {\r\n      console.error(`trouble resetting slider, initValue is ${this.initValue}`);\r\n    }\r\n  }\r\n\r\n  gradient(val: 'on' | 'off') {\r\n    const compId = this.id();\r\n\r\n    // TODO: Anguar way to do this?\r\n    const targetElem = document.getElementById(`cc-${compId}`) as HTMLElement;\r\n\r\n    if (targetElem) {\r\n      if (val === 'on') {\r\n        targetElem.style.background = 'var(--gradient-background)';\r\n      }\r\n\r\n      if (val === 'off') {\r\n        targetElem.style.background = 'var(--default-background)';\r\n      }\r\n    } else {\r\n      console.warn(`no elem to assign gradient to.`);\r\n    }\r\n  }\r\n\r\n  redefineVariable(element: HTMLElement, variableName: string, newValue: string) {\r\n    element.style.setProperty(variableName, newValue);\r\n  }\r\n\r\n  redefineGradientStops(lightMin: number, lightMax: number) {\r\n    const compId = this.id();\r\n\r\n    if (this.color()) {\r\n      const targetElement = document.getElementById(`cc-${compId}`) as HTMLElement;\r\n\r\n      const stops = [\r\n        '--grad-stop-0',\r\n        '--grad-stop-1',\r\n        '--grad-stop-2',\r\n        '--grad-stop-3',\r\n        '--grad-stop-4',\r\n        '--grad-stop-5',\r\n      ];\r\n\r\n      // get new stop values\r\n      const stopInterval = (lightMax - lightMin) / (stops.length - 1);\r\n      const stopVals = [];\r\n\r\n      for (let i = 0; i < stops.length; i++) {\r\n        const targetLight = stopInterval * i + lightMin;\r\n        targetLight;\r\n\r\n        const boundColor = this.color();\r\n\r\n        if (!boundColor) {\r\n          console.error(`no color bound to redefine gradient stops with. . .`);\r\n\r\n          break;\r\n        } else {\r\n          const stopColor = this.cus.createSrgbColor(boundColor, targetLight);\r\n\r\n          stopVals.push(stopColor);\r\n        }\r\n      }\r\n\r\n      // assign new stop values\r\n\r\n      for (let i = 0; i < stops.length; i++) {\r\n        const targetStop = stops[i];\r\n        const targetStopVal = stopVals[i];\r\n\r\n        if (targetStopVal) {\r\n          this.redefineVariable(targetElement, targetStop, targetStopVal);\r\n        } else {\r\n          console.log(`no new val to assign`);\r\n        }\r\n      }\r\n    } else {\r\n      console.log(`no color specified`);\r\n    }\r\n  }\r\n}\r\n",
+            "properties": [
+                {
+                    "name": "reset",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 6
+                }
+            ],
+            "indexSignatures": [],
+            "kind": 172,
+            "methods": [],
+            "extends": []
+        },
+        {
             "name": "User",
             "id": "interface-User-23c11020a2831beb3fa02ee911a75b64009c31bb46f73a01145c2560cb13b7f7e641105b678bd8fb01a5a199117001f3da4a78351d29d85d213ed7b82982091f",
             "file": "src/stories/user.ts",
@@ -1362,6 +1387,159 @@
             "hostListeners": []
         },
         {
+            "name": "CopyToClipboardEvent",
+            "id": "class-CopyToClipboardEvent-04ee7532967832742025521d161223b908dea8fa8be928c31f59a347e7d20395438bbd17dbe634c3fd194e951dd240bf56d243dbb84ebd8e65dc6c4ab938fc7d",
+            "file": "src/app/_components/copy-to-clipboard-button/copy-to-clipboard-button.component.ts",
+            "deprecated": false,
+            "deprecationMessage": "",
+            "type": "class",
+            "sourceCode": "import { Component, Output, EventEmitter, input } from '@angular/core';\r\n\r\nexport class CopyToClipboardEvent {\r\n  copied: boolean = false;\r\n  color: string = '';\r\n}\r\n\r\n@Component({\r\n  selector: 'app-copy-to-clipboard-button',\r\n  templateUrl: './copy-to-clipboard-button.component.html',\r\n  styleUrls: ['./copy-to-clipboard-button.component.scss'],\r\n  standalone: true,\r\n})\r\nexport class CopyToClipboardButtonComponent {\r\n  color = input<string>('');\r\n  debug = input<boolean>(true);\r\n\r\n  @Output() copyEvent = new EventEmitter<CopyToClipboardEvent>();\r\n\r\n  async copyToClipboard(): Promise<void> {\r\n    const color = this.color();\r\n\r\n    if (color) {\r\n      const colorSansHex = color.replace('#', '');\r\n\r\n      try {\r\n        await navigator.clipboard.writeText(colorSansHex);\r\n\r\n        this.copyEvent.emit({\r\n          copied: true,\r\n          color: colorSansHex,\r\n        });\r\n\r\n        if (this.debug()) {\r\n          console.log(color, 'copied to clipboard');\r\n        }\r\n      } catch (err) {\r\n        this.copyEvent.emit({\r\n          copied: false,\r\n          color: colorSansHex,\r\n        });\r\n\r\n        console.error('Failed to copy text: ', err);\r\n      }\r\n    } else {\r\n      console.error('nothing to copy');\r\n    }\r\n  }\r\n}\r\n",
+            "inputsClass": [],
+            "outputsClass": [],
+            "properties": [
+                {
+                    "name": "color",
+                    "defaultValue": "''",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "string",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 5
+                },
+                {
+                    "name": "copied",
+                    "defaultValue": "false",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "boolean",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 4
+                }
+            ],
+            "methods": [],
+            "indexSignatures": [],
+            "extends": [],
+            "hostBindings": [],
+            "hostListeners": []
+        },
+        {
+            "name": "DifferencesDataObj",
+            "id": "class-DifferencesDataObj-cc15cf4cac05281e32e26d00f8d7592be5eeb4a6c2ffdf3b8bae1ebcb6798ee03a6aae5ce70ef87d82e4b5accd2027142406e803fa528ca54a46bf854d98a4be",
+            "file": "src/app/_components/metadata/metadata.component.ts",
+            "deprecated": false,
+            "deprecationMessage": "",
+            "type": "class",
+            "sourceCode": "import { Component, effect, inject, input } from '@angular/core';\r\nimport { ColorUtilService, ColorMetaObj } from '../../services/color-util.service';\r\nimport { ColorMetricsService } from '../../services/color-metrics.service';\r\n\r\nexport class DifferencesDataObj {\r\n  deltaE: number = NaN;\r\n  wcag2Old: number = NaN;\r\n  wcag2New: number = NaN;\r\n  apca: number = NaN;\r\n}\r\nexport class SuccessesObj {\r\n  text: 'pass' | 'fail' | null = null;\r\n  largeText: 'pass' | 'fail' | null = null;\r\n  objectMinDimension: number | string = NaN;\r\n}\r\n\r\n@Component({\r\n  selector: 'app-metadata',\r\n  templateUrl: './metadata.component.html',\r\n  styleUrls: ['./metadata.component.scss'],\r\n  standalone: true,\r\n})\r\nexport class MetadataComponent {\r\n  colorOne = input<string>('');\r\n  colorTwo = input<string>('');\r\n  debug = input<boolean>(false);\r\n\r\n  cus = inject(ColorUtilService);\r\n  cms = inject(ColorMetricsService);\r\n\r\n  differences: DifferencesDataObj = new DifferencesDataObj();\r\n\r\n  successes: SuccessesObj = {\r\n    text: null,\r\n    largeText: null,\r\n    objectMinDimension: NaN,\r\n  };\r\n\r\n  colorOneMeta: ColorMetaObj | null = null;\r\n\r\n  colorTwoMeta: ColorMetaObj | null = null;\r\n\r\n  constructor() {\r\n    effect(() => {\r\n      const colorOne = this.colorOne();\r\n      const colorTwo = this.colorTwo();\r\n\r\n      this.getColorMeta(colorOne, colorTwo);\r\n\r\n      this.getColorDifference(colorOne, colorTwo);\r\n\r\n      this.getSuccesses(colorOne, colorTwo);\r\n    });\r\n  }\r\n\r\n  getColorMeta(colOne: string | null, colTwo: string | null) {\r\n    if (colOne && colTwo) {\r\n      if (this.cus.getColorMeta(colOne)) {\r\n        this.colorOneMeta = this.cus.getColorMeta(colOne);\r\n\r\n        this.colorTwoMeta = this.cus.getColorMeta(colTwo);\r\n      }\r\n    } else {\r\n      if (this.debug()) {\r\n        console.warn(`failed to get color meta`);\r\n      }\r\n    }\r\n  }\r\n\r\n  getColorDifference(colOne: string | null, colTwo: string | null) {\r\n    if (colOne && colTwo) {\r\n      const deltaE = this.cus.calcDeltaE(colOne, colTwo);\r\n      const wcag2New = this.cms.getContrast(colOne, colTwo, 'bpca');\r\n      const wcag2Old = this.cus.calcWcag2(colOne, colTwo);\r\n      const apca = this.cms.getContrast(colOne, colTwo, 'apca');\r\n\r\n      this.differences.deltaE = !deltaE ? NaN : deltaE;\r\n\r\n      this.differences.wcag2New = !wcag2New ? NaN : wcag2New;\r\n\r\n      this.differences.wcag2Old = !wcag2Old ? NaN : wcag2Old;\r\n\r\n      this.differences.apca = !apca ? NaN : apca;\r\n    } else {\r\n      if (this.debug()) {\r\n        console.warn(`failed to get color differences`);\r\n      }\r\n    }\r\n  }\r\n\r\n  getSuccesses(colOne: string | null, colTwo: string | null) {\r\n    if (colOne && colTwo) {\r\n      const wcagNew = this.cms.getContrast(colOne, colTwo, 'bpca');\r\n\r\n      const apcaScore = this.cms.getContrast(colOne, colTwo, 'apca');\r\n\r\n      if (wcagNew && apcaScore) {\r\n        if (wcagNew >= 0 && Math.abs(apcaScore) >= 0) {\r\n          this.successes.text = wcagNew >= 4.5 ? 'pass' : 'fail';\r\n\r\n          this.successes.largeText = wcagNew >= 3 ? 'pass' : 'fail';\r\n\r\n          const minDimension = this.cus.getMinObjectDimension(apcaScore);\r\n\r\n          this.successes.objectMinDimension = Number.isNaN(minDimension)\r\n            ? 'invisible'\r\n            : minDimension;\r\n        } else {\r\n          if (this.debug()) {\r\n            console.warn(`something wonky with calculating scores`);\r\n          }\r\n        }\r\n      } else {\r\n        if (this.debug()) {\r\n          console.warn(`trouble getting scores`);\r\n        }\r\n      }\r\n    } else {\r\n      if (this.debug()) {\r\n        console.warn('no colors for successes');\r\n      }\r\n    }\r\n  }\r\n}\r\n",
+            "inputsClass": [],
+            "outputsClass": [],
+            "properties": [
+                {
+                    "name": "apca",
+                    "defaultValue": "NaN",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "number",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 9
+                },
+                {
+                    "name": "deltaE",
+                    "defaultValue": "NaN",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "number",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 6
+                },
+                {
+                    "name": "wcag2New",
+                    "defaultValue": "NaN",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "number",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 8
+                },
+                {
+                    "name": "wcag2Old",
+                    "defaultValue": "NaN",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "number",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 7
+                }
+            ],
+            "methods": [],
+            "indexSignatures": [],
+            "extends": [],
+            "hostBindings": [],
+            "hostListeners": []
+        },
+        {
+            "name": "SuccessesObj",
+            "id": "class-SuccessesObj-cc15cf4cac05281e32e26d00f8d7592be5eeb4a6c2ffdf3b8bae1ebcb6798ee03a6aae5ce70ef87d82e4b5accd2027142406e803fa528ca54a46bf854d98a4be",
+            "file": "src/app/_components/metadata/metadata.component.ts",
+            "deprecated": false,
+            "deprecationMessage": "",
+            "type": "class",
+            "sourceCode": "import { Component, effect, inject, input } from '@angular/core';\r\nimport { ColorUtilService, ColorMetaObj } from '../../services/color-util.service';\r\nimport { ColorMetricsService } from '../../services/color-metrics.service';\r\n\r\nexport class DifferencesDataObj {\r\n  deltaE: number = NaN;\r\n  wcag2Old: number = NaN;\r\n  wcag2New: number = NaN;\r\n  apca: number = NaN;\r\n}\r\nexport class SuccessesObj {\r\n  text: 'pass' | 'fail' | null = null;\r\n  largeText: 'pass' | 'fail' | null = null;\r\n  objectMinDimension: number | string = NaN;\r\n}\r\n\r\n@Component({\r\n  selector: 'app-metadata',\r\n  templateUrl: './metadata.component.html',\r\n  styleUrls: ['./metadata.component.scss'],\r\n  standalone: true,\r\n})\r\nexport class MetadataComponent {\r\n  colorOne = input<string>('');\r\n  colorTwo = input<string>('');\r\n  debug = input<boolean>(false);\r\n\r\n  cus = inject(ColorUtilService);\r\n  cms = inject(ColorMetricsService);\r\n\r\n  differences: DifferencesDataObj = new DifferencesDataObj();\r\n\r\n  successes: SuccessesObj = {\r\n    text: null,\r\n    largeText: null,\r\n    objectMinDimension: NaN,\r\n  };\r\n\r\n  colorOneMeta: ColorMetaObj | null = null;\r\n\r\n  colorTwoMeta: ColorMetaObj | null = null;\r\n\r\n  constructor() {\r\n    effect(() => {\r\n      const colorOne = this.colorOne();\r\n      const colorTwo = this.colorTwo();\r\n\r\n      this.getColorMeta(colorOne, colorTwo);\r\n\r\n      this.getColorDifference(colorOne, colorTwo);\r\n\r\n      this.getSuccesses(colorOne, colorTwo);\r\n    });\r\n  }\r\n\r\n  getColorMeta(colOne: string | null, colTwo: string | null) {\r\n    if (colOne && colTwo) {\r\n      if (this.cus.getColorMeta(colOne)) {\r\n        this.colorOneMeta = this.cus.getColorMeta(colOne);\r\n\r\n        this.colorTwoMeta = this.cus.getColorMeta(colTwo);\r\n      }\r\n    } else {\r\n      if (this.debug()) {\r\n        console.warn(`failed to get color meta`);\r\n      }\r\n    }\r\n  }\r\n\r\n  getColorDifference(colOne: string | null, colTwo: string | null) {\r\n    if (colOne && colTwo) {\r\n      const deltaE = this.cus.calcDeltaE(colOne, colTwo);\r\n      const wcag2New = this.cms.getContrast(colOne, colTwo, 'bpca');\r\n      const wcag2Old = this.cus.calcWcag2(colOne, colTwo);\r\n      const apca = this.cms.getContrast(colOne, colTwo, 'apca');\r\n\r\n      this.differences.deltaE = !deltaE ? NaN : deltaE;\r\n\r\n      this.differences.wcag2New = !wcag2New ? NaN : wcag2New;\r\n\r\n      this.differences.wcag2Old = !wcag2Old ? NaN : wcag2Old;\r\n\r\n      this.differences.apca = !apca ? NaN : apca;\r\n    } else {\r\n      if (this.debug()) {\r\n        console.warn(`failed to get color differences`);\r\n      }\r\n    }\r\n  }\r\n\r\n  getSuccesses(colOne: string | null, colTwo: string | null) {\r\n    if (colOne && colTwo) {\r\n      const wcagNew = this.cms.getContrast(colOne, colTwo, 'bpca');\r\n\r\n      const apcaScore = this.cms.getContrast(colOne, colTwo, 'apca');\r\n\r\n      if (wcagNew && apcaScore) {\r\n        if (wcagNew >= 0 && Math.abs(apcaScore) >= 0) {\r\n          this.successes.text = wcagNew >= 4.5 ? 'pass' : 'fail';\r\n\r\n          this.successes.largeText = wcagNew >= 3 ? 'pass' : 'fail';\r\n\r\n          const minDimension = this.cus.getMinObjectDimension(apcaScore);\r\n\r\n          this.successes.objectMinDimension = Number.isNaN(minDimension)\r\n            ? 'invisible'\r\n            : minDimension;\r\n        } else {\r\n          if (this.debug()) {\r\n            console.warn(`something wonky with calculating scores`);\r\n          }\r\n        }\r\n      } else {\r\n        if (this.debug()) {\r\n          console.warn(`trouble getting scores`);\r\n        }\r\n      }\r\n    } else {\r\n      if (this.debug()) {\r\n        console.warn('no colors for successes');\r\n      }\r\n    }\r\n  }\r\n}\r\n",
+            "inputsClass": [],
+            "outputsClass": [],
+            "properties": [
+                {
+                    "name": "largeText",
+                    "defaultValue": "null",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "\"pass\" | \"fail\" | null",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 13
+                },
+                {
+                    "name": "objectMinDimension",
+                    "defaultValue": "NaN",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "number | string",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 14
+                },
+                {
+                    "name": "text",
+                    "defaultValue": "null",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "\"pass\" | \"fail\" | null",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 12
+                }
+            ],
+            "methods": [],
+            "indexSignatures": [],
+            "extends": [],
+            "hostBindings": [],
+            "hostListeners": []
+        },
+        {
             "name": "TableColorCell",
             "id": "class-TableColorCell-2479b5e6db4f725d59db35a9abac76480357566bea9c7c3c2b270c1f12e808def277ad7279178f539758dab7f1efe1f8e603dbbd93f7af7d8d7fc86abc322ada",
             "file": "src/app/_components/palette-table/palette-table.component.ts",
@@ -1934,6 +2112,805 @@
             "templateData": "<!-- This comp is for users with typical vision. The same information is delivered with better UX for a user who is blind in the Color Metadata section. -->\r\n<div class=\"comp-container\" aria-hidden=\"true\">\r\n  <div class=\"score-container\">\r\n    <label class=\"sr-only\" for=\"contrast-score\"\r\n      >Contrast Score for Selected Colors</label\r\n    >\r\n\r\n    <div id=\"contrast-score\" class=\"score\">\r\n      {{ contrastScore ? contrastScore : \"!\" }}\r\n      <!-- {{ contrastScore }} -->\r\n    </div>\r\n  </div>\r\n</div>\r\n"
         },
         {
+            "name": "ColorPickerComponent",
+            "id": "component-ColorPickerComponent-748be270b0cb001d9373b705430bb6c3182a6d15a15a9dc8d6d2138b3b846862b77089a0f2b4f3c67040ae54c976579c54f5089587e94f5182bbca93cf556a11",
+            "file": "src/app/_components/color-picker/color-picker.component.ts",
+            "encapsulation": [],
+            "entryComponents": [],
+            "inputs": [],
+            "outputs": [],
+            "providers": [],
+            "selector": "app-color-picker",
+            "styleUrls": [
+                "./color-picker.component.scss"
+            ],
+            "styles": [],
+            "templateUrl": [
+                "./color-picker.component.html"
+            ],
+            "viewProviders": [],
+            "hostDirectives": [],
+            "inputsClass": [
+                {
+                    "name": "color",
+                    "defaultValue": "''",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "string",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 19,
+                    "required": false
+                },
+                {
+                    "name": "comparedColor",
+                    "defaultValue": "''",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "string",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 22,
+                    "required": false
+                },
+                {
+                    "name": "debug",
+                    "defaultValue": "false",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "boolean",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 20,
+                    "required": false
+                },
+                {
+                    "name": "inputId",
+                    "defaultValue": "'fg-color'",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "string",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 17,
+                    "required": false
+                },
+                {
+                    "name": "inputName",
+                    "defaultValue": "'foreground color'",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "string",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 18,
+                    "required": false
+                }
+            ],
+            "outputsClass": [
+                {
+                    "name": "selectedColor",
+                    "defaultValue": "new EventEmitter<string>()",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "line": 24,
+                    "type": "EventEmitter"
+                },
+                {
+                    "name": "comparedColor",
+                    "defaultValue": "''",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "string",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 22,
+                    "required": false
+                }
+            ],
+            "propertiesClass": [
+                {
+                    "name": "uiColor",
+                    "defaultValue": "''",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "string",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 28
+                },
+                {
+                    "name": "uiComparedColor",
+                    "defaultValue": "''",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "string",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 26
+                }
+            ],
+            "methodsClass": [
+                {
+                    "name": "handleColorChange",
+                    "args": [
+                        {
+                            "name": "inputColor",
+                            "type": "string",
+                            "deprecated": false,
+                            "deprecationMessage": ""
+                        }
+                    ],
+                    "optional": false,
+                    "returnType": "void",
+                    "typeParameters": [],
+                    "line": 30,
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "jsdoctags": [
+                        {
+                            "name": "inputColor",
+                            "type": "string",
+                            "deprecated": false,
+                            "deprecationMessage": "",
+                            "tagName": {
+                                "text": "param"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "handleInputEvent",
+                    "args": [
+                        {
+                            "name": "event",
+                            "type": "Event",
+                            "deprecated": false,
+                            "deprecationMessage": ""
+                        }
+                    ],
+                    "optional": false,
+                    "returnType": "void",
+                    "typeParameters": [],
+                    "line": 38,
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "jsdoctags": [
+                        {
+                            "name": "event",
+                            "type": "Event",
+                            "deprecated": false,
+                            "deprecationMessage": "",
+                            "tagName": {
+                                "text": "param"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "resetUiComparedColor",
+                    "args": [],
+                    "optional": false,
+                    "returnType": "void",
+                    "typeParameters": [],
+                    "line": 48,
+                    "deprecated": false,
+                    "deprecationMessage": ""
+                },
+                {
+                    "name": "updateInputValue",
+                    "args": [
+                        {
+                            "name": "color",
+                            "type": "string",
+                            "deprecated": false,
+                            "deprecationMessage": ""
+                        }
+                    ],
+                    "optional": false,
+                    "returnType": "void",
+                    "typeParameters": [],
+                    "line": 52,
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "jsdoctags": [
+                        {
+                            "name": "color",
+                            "type": "string",
+                            "deprecated": false,
+                            "deprecationMessage": "",
+                            "tagName": {
+                                "text": "param"
+                            }
+                        }
+                    ]
+                }
+            ],
+            "deprecated": false,
+            "deprecationMessage": "",
+            "hostBindings": [],
+            "hostListeners": [],
+            "standalone": true,
+            "imports": [],
+            "description": "",
+            "rawdescription": "\n",
+            "type": "component",
+            "sourceCode": "import {\r\n  Component,\r\n  effect,\r\n  EventEmitter,\r\n  input,\r\n  model,\r\n  Output,\r\n} from '@angular/core';\r\n\r\n@Component({\r\n  selector: 'app-color-picker',\r\n  templateUrl: './color-picker.component.html',\r\n  styleUrls: ['./color-picker.component.scss'],\r\n  standalone: true,\r\n})\r\nexport class ColorPickerComponent {\r\n  inputId = input<string>('fg-color');\r\n  inputName = input<string>('foreground color');\r\n  color = input<string>('');\r\n  debug = input<boolean>(false);\r\n\r\n  comparedColor = model<string>('');\r\n\r\n  @Output() selectedColor = new EventEmitter<string>();\r\n\r\n  uiComparedColor: string = '';\r\n\r\n  uiColor: string = '';\r\n\r\n  handleColorChange(inputColor: string) {\r\n    // update ui main color\r\n    this.uiColor = inputColor;\r\n\r\n    // send out color for use in other comps\r\n    this.selectedColor.emit(inputColor);\r\n  }\r\n\r\n  handleInputEvent(event: Event) {\r\n    const inputElement = event.target as HTMLInputElement;\r\n\r\n    const selectedColor = inputElement.value;\r\n\r\n    this.resetUiComparedColor();\r\n\r\n    this.handleColorChange(selectedColor);\r\n  }\r\n\r\n  resetUiComparedColor() {\r\n    this.uiComparedColor = 'transparent';\r\n  }\r\n\r\n  updateInputValue(color: string) {\r\n    const targetInput = document.getElementById(\r\n      this.inputId(),\r\n    ) as HTMLInputElement;\r\n\r\n    if (targetInput) {\r\n      targetInput.value = color;\r\n    } else {\r\n      console.error(`something went wrong in color picker comp.`);\r\n    }\r\n  }\r\n\r\n  constructor() {\r\n    effect(() => {\r\n      const comparedColor = this.comparedColor();\r\n\r\n      this.uiComparedColor = comparedColor;\r\n    });\r\n\r\n    effect(() => {\r\n      const colorFromParent = this.color();\r\n\r\n      if (colorFromParent) {\r\n        this.handleColorChange(colorFromParent);\r\n\r\n        this.updateInputValue(colorFromParent);\r\n\r\n        this.resetUiComparedColor();\r\n      } else {\r\n        if (this.debug()) {\r\n          console.warn('no color from parent');\r\n        }\r\n      }\r\n    });\r\n  }\r\n}\r\n",
+            "assetsDirs": [],
+            "styleUrlsData": [
+                {
+                    "data": ".comp-container {\r\n  display: inline-block;\r\n  position: relative;\r\n  border-radius: 5px 0 0 5px;\r\n\r\n  &:hover {\r\n    box-shadow: 0 4px 0 0 var(--ui-shadow-color);\r\n  }\r\n\r\n  input {\r\n    width: 50px;\r\n    height: 50px;\r\n    box-sizing: border-box;\r\n    border: var(--app-white) 2px solid;\r\n    border-radius: 5px 0 0 5px;\r\n  }\r\n\r\n  .color-preview {\r\n    border-radius: 5px 0 0 5px;\r\n    position: absolute;\r\n    top: 50%;\r\n    left: 50%;\r\n\r\n    /* NOTE: 2(15px) + 15px = 45px */\r\n    width: 45px;\r\n    height: 45px;\r\n    border: transparent 15px solid;\r\n    transform: translate(-50%, -50%);\r\n    background-color: transparent;\r\n    pointer-events: none;\r\n    box-sizing: border-box;\r\n  }\r\n}\r\n",
+                    "styleUrl": "./color-picker.component.scss"
+                }
+            ],
+            "stylesData": "",
+            "constructorObj": {
+                "name": "constructor",
+                "description": "",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "args": [],
+                "line": 62
+            },
+            "extends": [],
+            "templateData": "<div class=\"comp-container\">\r\n  <label class=\"sr-only\" [for]=\"inputId()\">Color Picker One</label>\r\n  <input\r\n    type=\"color\"\r\n    [id]=\"inputId()\"\r\n    [name]=\"inputName()\"\r\n    (input)=\"handleInputEvent($event)\"\r\n  />\r\n\r\n  <div\r\n    class=\"color-preview\"\r\n    [style.borderColor]=\"uiComparedColor\"\r\n    [style.backgroundColor]=\"uiColor\"\r\n  ></div>\r\n</div>\r\n"
+        },
+        {
+            "name": "ColorSliderComponent",
+            "id": "component-ColorSliderComponent-8df741c7dd4525e455b609c7eb812b065cb877c52b4e223cc4a51a774e1d2fb6bdb59cd44911219b8a91eb550728bf9f544aaf2dfd2ec3219b285f943f93253e",
+            "file": "src/app/_components/color-slider/color-slider.component.ts",
+            "encapsulation": [],
+            "entryComponents": [],
+            "inputs": [],
+            "outputs": [],
+            "providers": [],
+            "selector": "app-color-slider",
+            "styleUrls": [
+                "./color-slider.component.scss"
+            ],
+            "styles": [],
+            "templateUrl": [
+                "./color-slider.component.html"
+            ],
+            "viewProviders": [],
+            "hostDirectives": [],
+            "inputsClass": [
+                {
+                    "name": "color",
+                    "defaultValue": "''",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "string",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 19,
+                    "required": false
+                },
+                {
+                    "name": "constantChroma",
+                    "defaultValue": "false",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "boolean",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 20,
+                    "required": false
+                },
+                {
+                    "name": "debug",
+                    "defaultValue": "false",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "boolean",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 23,
+                    "required": false
+                },
+                {
+                    "name": "id",
+                    "defaultValue": "'slider-0'",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "string | 'slider-0'",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 17,
+                    "required": false
+                },
+                {
+                    "name": "name",
+                    "defaultValue": "'color-slider'",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "string | 'color-slider'",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 18,
+                    "required": false
+                },
+                {
+                    "name": "resetSlider",
+                    "defaultValue": "null",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "ResetObject | null",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 22,
+                    "required": false
+                },
+                {
+                    "name": "showGradient",
+                    "defaultValue": "false",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "boolean",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 21,
+                    "required": false
+                }
+            ],
+            "outputsClass": [
+                {
+                    "name": "colorVariant",
+                    "defaultValue": "new EventEmitter<string | null>()",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "line": 25,
+                    "type": "EventEmitter"
+                }
+            ],
+            "propertiesClass": [
+                {
+                    "name": "cus",
+                    "defaultValue": "inject(ColorUtilService)",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 27
+                },
+                {
+                    "name": "devColorVariant",
+                    "defaultValue": "''",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "string",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 29
+                },
+                {
+                    "name": "initValue",
+                    "defaultValue": "NaN",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "number",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 34
+                },
+                {
+                    "name": "slideInterval",
+                    "defaultValue": "NaN",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "number",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 31
+                },
+                {
+                    "name": "slideMax",
+                    "defaultValue": "NaN",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "number",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 33
+                },
+                {
+                    "name": "slideMin",
+                    "defaultValue": "NaN",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "number",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 32
+                },
+                {
+                    "name": "value",
+                    "defaultValue": "NaN",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "number",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 35
+                }
+            ],
+            "methodsClass": [
+                {
+                    "name": "getAndSetLightnessRange",
+                    "args": [
+                        {
+                            "name": "color",
+                            "type": "string",
+                            "deprecated": false,
+                            "deprecationMessage": ""
+                        },
+                        {
+                            "name": "options",
+                            "type": "literal type",
+                            "deprecated": false,
+                            "deprecationMessage": "",
+                            "optional": true
+                        }
+                    ],
+                    "optional": false,
+                    "returnType": "any",
+                    "typeParameters": [],
+                    "line": 79,
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "modifierKind": [
+                        134
+                    ],
+                    "jsdoctags": [
+                        {
+                            "name": "color",
+                            "type": "string",
+                            "deprecated": false,
+                            "deprecationMessage": "",
+                            "tagName": {
+                                "text": "param"
+                            }
+                        },
+                        {
+                            "name": "options",
+                            "type": "literal type",
+                            "deprecated": false,
+                            "deprecationMessage": "",
+                            "optional": true,
+                            "tagName": {
+                                "text": "param"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "gradient",
+                    "args": [
+                        {
+                            "name": "val",
+                            "type": "\"on\" | \"off\"",
+                            "deprecated": false,
+                            "deprecationMessage": ""
+                        }
+                    ],
+                    "optional": false,
+                    "returnType": "void",
+                    "typeParameters": [],
+                    "line": 146,
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "jsdoctags": [
+                        {
+                            "name": "val",
+                            "type": "\"on\" | \"off\"",
+                            "deprecated": false,
+                            "deprecationMessage": "",
+                            "tagName": {
+                                "text": "param"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "handleSliding",
+                    "args": [
+                        {
+                            "name": "event",
+                            "type": "Event",
+                            "deprecated": false,
+                            "deprecationMessage": ""
+                        }
+                    ],
+                    "optional": false,
+                    "returnType": "void",
+                    "typeParameters": [],
+                    "line": 109,
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "jsdoctags": [
+                        {
+                            "name": "event",
+                            "type": "Event",
+                            "deprecated": false,
+                            "deprecationMessage": "",
+                            "tagName": {
+                                "text": "param"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "redefineGradientStops",
+                    "args": [
+                        {
+                            "name": "lightMin",
+                            "type": "number",
+                            "deprecated": false,
+                            "deprecationMessage": ""
+                        },
+                        {
+                            "name": "lightMax",
+                            "type": "number",
+                            "deprecated": false,
+                            "deprecationMessage": ""
+                        }
+                    ],
+                    "optional": false,
+                    "returnType": "void",
+                    "typeParameters": [],
+                    "line": 169,
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "jsdoctags": [
+                        {
+                            "name": "lightMin",
+                            "type": "number",
+                            "deprecated": false,
+                            "deprecationMessage": "",
+                            "tagName": {
+                                "text": "param"
+                            }
+                        },
+                        {
+                            "name": "lightMax",
+                            "type": "number",
+                            "deprecated": false,
+                            "deprecationMessage": "",
+                            "tagName": {
+                                "text": "param"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "redefineVariable",
+                    "args": [
+                        {
+                            "name": "element",
+                            "type": "HTMLElement",
+                            "deprecated": false,
+                            "deprecationMessage": ""
+                        },
+                        {
+                            "name": "variableName",
+                            "type": "string",
+                            "deprecated": false,
+                            "deprecationMessage": ""
+                        },
+                        {
+                            "name": "newValue",
+                            "type": "string",
+                            "deprecated": false,
+                            "deprecationMessage": ""
+                        }
+                    ],
+                    "optional": false,
+                    "returnType": "void",
+                    "typeParameters": [],
+                    "line": 165,
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "jsdoctags": [
+                        {
+                            "name": "element",
+                            "type": "HTMLElement",
+                            "deprecated": false,
+                            "deprecationMessage": "",
+                            "tagName": {
+                                "text": "param"
+                            }
+                        },
+                        {
+                            "name": "variableName",
+                            "type": "string",
+                            "deprecated": false,
+                            "deprecationMessage": "",
+                            "tagName": {
+                                "text": "param"
+                            }
+                        },
+                        {
+                            "name": "newValue",
+                            "type": "string",
+                            "deprecated": false,
+                            "deprecationMessage": "",
+                            "tagName": {
+                                "text": "param"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "reset",
+                    "args": [],
+                    "optional": false,
+                    "returnType": "void",
+                    "typeParameters": [],
+                    "line": 133,
+                    "deprecated": false,
+                    "deprecationMessage": ""
+                },
+                {
+                    "name": "sendInitialLightVariant",
+                    "args": [],
+                    "optional": false,
+                    "returnType": "void",
+                    "typeParameters": [],
+                    "line": 68,
+                    "deprecated": false,
+                    "deprecationMessage": ""
+                }
+            ],
+            "deprecated": false,
+            "deprecationMessage": "",
+            "hostBindings": [],
+            "hostListeners": [],
+            "standalone": true,
+            "imports": [
+                {
+                    "name": "CommonModule",
+                    "type": "module"
+                }
+            ],
+            "description": "",
+            "rawdescription": "\n",
+            "type": "component",
+            "sourceCode": "import { Component, input, Output, EventEmitter, inject, effect } from '@angular/core';\r\nimport { CommonModule } from '@angular/common';\r\nimport { ColorUtilService } from '../../services/color-util.service';\r\n\r\nexport interface ResetObject {\r\n  reset: true;\r\n}\r\n\r\n@Component({\r\n  selector: 'app-color-slider',\r\n  templateUrl: './color-slider.component.html',\r\n  styleUrls: ['./color-slider.component.scss'],\r\n  imports: [CommonModule],\r\n  standalone: true,\r\n})\r\nexport class ColorSliderComponent {\r\n  id = input<string | 'slider-0'>('slider-0');\r\n  name = input<string | 'color-slider'>('color-slider');\r\n  color = input<string>('');\r\n  constantChroma = input<boolean>(false);\r\n  showGradient = input<boolean>(false);\r\n  resetSlider = input<ResetObject | null>(null);\r\n  debug = input<boolean>(false);\r\n\r\n  @Output() colorVariant = new EventEmitter<string | null>();\r\n\r\n  cus = inject(ColorUtilService);\r\n\r\n  devColorVariant: string = '';\r\n\r\n  slideInterval: number = NaN;\r\n  slideMin: number = NaN;\r\n  slideMax: number = NaN;\r\n  initValue: number = NaN;\r\n  value: number = NaN;\r\n\r\n  constructor() {\r\n    effect(() => {\r\n      const boundColor = this.color();\r\n      const showGradient = this.showGradient();\r\n      const resetSlider = this.resetSlider();\r\n      const debug = this.debug();\r\n\r\n      if (boundColor) {\r\n        this.getAndSetLightnessRange(boundColor, {\r\n          constantChroma: this.constantChroma(),\r\n        });\r\n      } else {\r\n        if (debug) {\r\n          console.warn(`no color specified to comp`);\r\n        }\r\n      }\r\n\r\n      if (showGradient) {\r\n        this.gradient('on');\r\n      }\r\n\r\n      if (!showGradient) {\r\n        this.gradient('off');\r\n      }\r\n\r\n      if (resetSlider && this.initValue) {\r\n        this.reset();\r\n      }\r\n    });\r\n  }\r\n\r\n  sendInitialLightVariant() {\r\n    const color = this.color();\r\n\r\n    // Good UX to just send the input color?\r\n    this.colorVariant.emit(color);\r\n\r\n    if (this.debug()) {\r\n      this.devColorVariant = color;\r\n    }\r\n  }\r\n\r\n  async getAndSetLightnessRange(color: string, options?: { constantChroma: boolean }) {\r\n    const rangeObject = await this.cus.getMinMaxLight(color);\r\n\r\n    if (rangeObject) {\r\n      this.sendInitialLightVariant();\r\n\r\n      this.slideMin = 0;\r\n      this.slideMax = 1;\r\n\r\n      if (options?.constantChroma) {\r\n        this.slideMin = rangeObject.lightMin;\r\n\r\n        this.slideMax = rangeObject.lightMax;\r\n      }\r\n\r\n      this.slideInterval = (this.slideMax - this.slideMin) / 80;\r\n\r\n      const lightnessIndex = 0;\r\n      const initialSlideValue = rangeObject.originalCoords[lightnessIndex];\r\n\r\n      this.initValue = initialSlideValue;\r\n\r\n      this.value = initialSlideValue;\r\n\r\n      this.redefineGradientStops(this.slideMin, this.slideMax);\r\n    } else {\r\n      console.error(`no range object for slider`);\r\n    }\r\n  }\r\n\r\n  handleSliding(event: Event) {\r\n    const inputElem = event.target as HTMLInputElement;\r\n\r\n    if (inputElem) {\r\n      const lightValue = parseFloat(inputElem.value);\r\n\r\n      const boundColor = this.color();\r\n\r\n      if (boundColor) {\r\n        const lightnessVariant = this.cus.createSrgbColor(boundColor, lightValue);\r\n\r\n        if (this.debug()) {\r\n          console.log(`slide modding ${this.color} to ${lightnessVariant}`);\r\n\r\n          this.devColorVariant = !lightnessVariant ? '' : lightnessVariant;\r\n        }\r\n\r\n        this.colorVariant.emit(lightnessVariant);\r\n      } else {\r\n        console.error(`no color specified`);\r\n      }\r\n    }\r\n  }\r\n\r\n  reset() {\r\n    const compId = this.id();\r\n\r\n    // TODO: Isn't there an angular way to do this?\r\n    const element = document.getElementById(compId) as HTMLInputElement;\r\n\r\n    if (this.initValue) {\r\n      element.value = this.initValue.toString();\r\n    } else {\r\n      console.error(`trouble resetting slider, initValue is ${this.initValue}`);\r\n    }\r\n  }\r\n\r\n  gradient(val: 'on' | 'off') {\r\n    const compId = this.id();\r\n\r\n    // TODO: Anguar way to do this?\r\n    const targetElem = document.getElementById(`cc-${compId}`) as HTMLElement;\r\n\r\n    if (targetElem) {\r\n      if (val === 'on') {\r\n        targetElem.style.background = 'var(--gradient-background)';\r\n      }\r\n\r\n      if (val === 'off') {\r\n        targetElem.style.background = 'var(--default-background)';\r\n      }\r\n    } else {\r\n      console.warn(`no elem to assign gradient to.`);\r\n    }\r\n  }\r\n\r\n  redefineVariable(element: HTMLElement, variableName: string, newValue: string) {\r\n    element.style.setProperty(variableName, newValue);\r\n  }\r\n\r\n  redefineGradientStops(lightMin: number, lightMax: number) {\r\n    const compId = this.id();\r\n\r\n    if (this.color()) {\r\n      const targetElement = document.getElementById(`cc-${compId}`) as HTMLElement;\r\n\r\n      const stops = [\r\n        '--grad-stop-0',\r\n        '--grad-stop-1',\r\n        '--grad-stop-2',\r\n        '--grad-stop-3',\r\n        '--grad-stop-4',\r\n        '--grad-stop-5',\r\n      ];\r\n\r\n      // get new stop values\r\n      const stopInterval = (lightMax - lightMin) / (stops.length - 1);\r\n      const stopVals = [];\r\n\r\n      for (let i = 0; i < stops.length; i++) {\r\n        const targetLight = stopInterval * i + lightMin;\r\n        targetLight;\r\n\r\n        const boundColor = this.color();\r\n\r\n        if (!boundColor) {\r\n          console.error(`no color bound to redefine gradient stops with. . .`);\r\n\r\n          break;\r\n        } else {\r\n          const stopColor = this.cus.createSrgbColor(boundColor, targetLight);\r\n\r\n          stopVals.push(stopColor);\r\n        }\r\n      }\r\n\r\n      // assign new stop values\r\n\r\n      for (let i = 0; i < stops.length; i++) {\r\n        const targetStop = stops[i];\r\n        const targetStopVal = stopVals[i];\r\n\r\n        if (targetStopVal) {\r\n          this.redefineVariable(targetElement, targetStop, targetStopVal);\r\n        } else {\r\n          console.log(`no new val to assign`);\r\n        }\r\n      }\r\n    } else {\r\n      console.log(`no color specified`);\r\n    }\r\n  }\r\n}\r\n",
+            "assetsDirs": [],
+            "styleUrlsData": [
+                {
+                    "data": ".comp-container {\r\n  --default-background: var(--app-white);\r\n  --grad-stop-0: black;\r\n  --grad-stop-1: rgb(8.6104% 8.6104% 8.6104%);\r\n  --grad-stop-2: rgb(28.06% 28.06% 28.06%);\r\n  --grad-stop-3: rgb(50.211% 50.211% 50.211%);\r\n  --grad-stop-4: rgb(74.321% 74.321% 74.321%);\r\n  --grad-stop-5: white;\r\n  --gradient-background: linear-gradient(\r\n    to right,\r\n    black,\r\n    var(--grad-stop-0) calc((var(--min-hit-dimension-aaa) / 2) + 8px),\r\n    var(--grad-stop-1),\r\n    var(--grad-stop-2),\r\n    var(--grad-stop-3),\r\n    var(--grad-stop-4),\r\n    var(--grad-stop-5) calc(100% - (var(--min-hit-dimension-aaa) / 2) - 8px),\r\n    white\r\n  );\r\n\r\n  box-sizing: border-box;\r\n  display: flex;\r\n\r\n  /* gives input more room on left and right ends to be hit more successfully */\r\n  padding: 0 calc(var(--min-hit-dimension-aaa) / 2);\r\n  border: 2px solid var(--app-white);\r\n  border-left: none;\r\n  border-right: none;\r\n  align-items: center;\r\n  background: var(--default-background);\r\n\r\n  &:hover {\r\n    box-shadow: 0 4px 0 0 var(--ui-shadow-color);\r\n  }\r\n\r\n  input {\r\n    flex-grow: 1;\r\n    width: 100%;\r\n    height: 46px;\r\n    min-height: var(--min-hit-dimension-aaa);\r\n    margin: 0;\r\n    background: var(--default-background);\r\n    background-color: red;\r\n  }\r\n\r\n  .special-case {\r\n    display: flex;\r\n    flex-grow: 1;\r\n    height: 46px;\r\n    min-height: var(--min-hit-dimension-aaa);\r\n    align-items: center;\r\n\r\n    /* TODO: what do custom input text need to be? <p>? */\r\n    div {\r\n      font-family: var(--mono-font);\r\n      font-size: var(--min-body-text-size);\r\n      font-weight: 400;\r\n    }\r\n  }\r\n}\r\n\r\n.dev-overlay {\r\n  display: none;\r\n  position: absolute;\r\n  gap: 1rem;\r\n  right: 0;\r\n  bottom: 0;\r\n\r\n  &.active {\r\n    display: flex;\r\n  }\r\n\r\n  .light-variant-chip {\r\n    border-radius: 100%;\r\n    width: 15px;\r\n    height: 15px;\r\n    border: 15px solid var(--app-black);\r\n  }\r\n}\r\n",
+                    "styleUrl": "./color-slider.component.scss"
+                }
+            ],
+            "stylesData": "",
+            "constructorObj": {
+                "name": "constructor",
+                "description": "",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "args": [],
+                "line": 35
+            },
+            "extends": [],
+            "templateData": "<div [id]=\"'cc-' + id()\" class=\"comp-container\">\r\n  <label [for]=\"id()\" class=\"sr-only\">Chroma and hue bound Lightness</label>\r\n\r\n  @if (slideMin != slideMax) {\r\n    <input\r\n      type=\"range\"\r\n      [name]=\"name()\"\r\n      [id]=\"id()\"\r\n      [min]=\"slideMin\"\r\n      [max]=\"slideMax\"\r\n      [step]=\"slideInterval\"\r\n      [value]=\"value\"\r\n      (input)=\"handleSliding($event)\"\r\n    />\r\n  } @else if (slideMin === slideMax) {\r\n    <div class=\"special-case\">\r\n      <div>!</div>\r\n    </div>\r\n  }\r\n</div>\r\n\r\n<div class=\"dev-overlay\" [ngClass]=\"{ active: debug() }\">\r\n  <h2>dev overlay</h2>\r\n\r\n  <div\r\n    class=\"light-variant-chip\"\r\n    [style.borderColor]=\"devColorVariant\"\r\n    [style.backgroundColor]=\"color()\"\r\n  ></div>\r\n</div>\r\n"
+        },
+        {
+            "name": "CopyToClipboardButtonComponent",
+            "id": "component-CopyToClipboardButtonComponent-04ee7532967832742025521d161223b908dea8fa8be928c31f59a347e7d20395438bbd17dbe634c3fd194e951dd240bf56d243dbb84ebd8e65dc6c4ab938fc7d",
+            "file": "src/app/_components/copy-to-clipboard-button/copy-to-clipboard-button.component.ts",
+            "encapsulation": [],
+            "entryComponents": [],
+            "inputs": [],
+            "outputs": [],
+            "providers": [],
+            "selector": "app-copy-to-clipboard-button",
+            "styleUrls": [
+                "./copy-to-clipboard-button.component.scss"
+            ],
+            "styles": [],
+            "templateUrl": [
+                "./copy-to-clipboard-button.component.html"
+            ],
+            "viewProviders": [],
+            "hostDirectives": [],
+            "inputsClass": [
+                {
+                    "name": "color",
+                    "defaultValue": "''",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "string",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 15,
+                    "required": false
+                },
+                {
+                    "name": "debug",
+                    "defaultValue": "true",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "boolean",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 16,
+                    "required": false
+                }
+            ],
+            "outputsClass": [
+                {
+                    "name": "copyEvent",
+                    "defaultValue": "new EventEmitter<CopyToClipboardEvent>()",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "line": 18,
+                    "type": "EventEmitter"
+                }
+            ],
+            "propertiesClass": [],
+            "methodsClass": [
+                {
+                    "name": "copyToClipboard",
+                    "args": [],
+                    "optional": false,
+                    "returnType": "Promise<void>",
+                    "typeParameters": [],
+                    "line": 20,
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "modifierKind": [
+                        134
+                    ]
+                }
+            ],
+            "deprecated": false,
+            "deprecationMessage": "",
+            "hostBindings": [],
+            "hostListeners": [],
+            "standalone": true,
+            "imports": [],
+            "description": "",
+            "rawdescription": "\n",
+            "type": "component",
+            "sourceCode": "import { Component, Output, EventEmitter, input } from '@angular/core';\r\n\r\nexport class CopyToClipboardEvent {\r\n  copied: boolean = false;\r\n  color: string = '';\r\n}\r\n\r\n@Component({\r\n  selector: 'app-copy-to-clipboard-button',\r\n  templateUrl: './copy-to-clipboard-button.component.html',\r\n  styleUrls: ['./copy-to-clipboard-button.component.scss'],\r\n  standalone: true,\r\n})\r\nexport class CopyToClipboardButtonComponent {\r\n  color = input<string>('');\r\n  debug = input<boolean>(true);\r\n\r\n  @Output() copyEvent = new EventEmitter<CopyToClipboardEvent>();\r\n\r\n  async copyToClipboard(): Promise<void> {\r\n    const color = this.color();\r\n\r\n    if (color) {\r\n      const colorSansHex = color.replace('#', '');\r\n\r\n      try {\r\n        await navigator.clipboard.writeText(colorSansHex);\r\n\r\n        this.copyEvent.emit({\r\n          copied: true,\r\n          color: colorSansHex,\r\n        });\r\n\r\n        if (this.debug()) {\r\n          console.log(color, 'copied to clipboard');\r\n        }\r\n      } catch (err) {\r\n        this.copyEvent.emit({\r\n          copied: false,\r\n          color: colorSansHex,\r\n        });\r\n\r\n        console.error('Failed to copy text: ', err);\r\n      }\r\n    } else {\r\n      console.error('nothing to copy');\r\n    }\r\n  }\r\n}\r\n",
+            "assetsDirs": [],
+            "styleUrlsData": [
+                {
+                    "data": ".comp-container {\r\n  display: inline-block;\r\n  position: relative;\r\n\r\n  button {\r\n    display: flex;\r\n    align-items: center;\r\n    justify-content: center;\r\n    border-radius: 0 5px 5px 0;\r\n    width: 50px;\r\n    height: 50px;\r\n    padding: 0.25rem;\r\n    border: transparent 2px solid;\r\n    background-color: var(--app-white);\r\n    min-width: var(--min-hit-dimension-aaa);\r\n    min-height: var(--min-hit-dimension-aaa);\r\n\r\n    &:hover {\r\n      box-shadow: 0 4px 0 0 var(--ui-shadow-color);\r\n    }\r\n\r\n    .svg-container {\r\n      width: 22px;\r\n      height: auto;\r\n\r\n      svg {\r\n        fill: var(--app-black);\r\n        display: block;\r\n      }\r\n    }\r\n  }\r\n}\r\n",
+                    "styleUrl": "./copy-to-clipboard-button.component.scss"
+                }
+            ],
+            "stylesData": "",
+            "extends": [],
+            "templateData": "<div class=\"comp-container\">\r\n  <button [disabled]=\"!color()\" [id]=\"'ctc-0'\" (click)=\"copyToClipboard()\">\r\n    <span class=\"sr-only\"> Copy current variant to Clipboard </span>\r\n    <div class=\"svg-container\">\r\n      <svg\r\n        xmlns=\"http://www.w3.org/2000/svg\"\r\n        viewBox=\"0 0 24 24\"\r\n        x=\"0px\"\r\n        y=\"0px\"\r\n      >\r\n        <path\r\n          fill-rule=\"evenodd\"\r\n          d=\"M384,608 L384,624 L368,624 L368,608 L384,608 Z M370,622 L382,622 L382,610 L370,610 L370,622 Z M362,602 L362,614 L366,614 L366,616 L360,616 L360,600 L376,600 L376,606 L374,606 L374,602 L362,602 Z\"\r\n          transform=\"translate(-360 -600)\"\r\n        />\r\n      </svg>\r\n    </div>\r\n  </button>\r\n</div>\r\n"
+        },
+        {
             "name": "HeaderComponent",
             "id": "component-HeaderComponent-35575735b3444c6f049822f5234963ce3b046795ea9cdf6a15e8c7d72acd8ededb78ca25c4e1fbb5f0416c5855203a87ae0483f5d065c2dfa68d5329e347a84b",
             "file": "src/stories/header.component.ts",
@@ -2018,6 +2995,292 @@
             ],
             "stylesData": "",
             "extends": []
+        },
+        {
+            "name": "MetadataComponent",
+            "id": "component-MetadataComponent-cc15cf4cac05281e32e26d00f8d7592be5eeb4a6c2ffdf3b8bae1ebcb6798ee03a6aae5ce70ef87d82e4b5accd2027142406e803fa528ca54a46bf854d98a4be",
+            "file": "src/app/_components/metadata/metadata.component.ts",
+            "encapsulation": [],
+            "entryComponents": [],
+            "inputs": [],
+            "outputs": [],
+            "providers": [],
+            "selector": "app-metadata",
+            "styleUrls": [
+                "./metadata.component.scss"
+            ],
+            "styles": [],
+            "templateUrl": [
+                "./metadata.component.html"
+            ],
+            "viewProviders": [],
+            "hostDirectives": [],
+            "inputsClass": [
+                {
+                    "name": "colorOne",
+                    "defaultValue": "''",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "string",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 24,
+                    "required": false
+                },
+                {
+                    "name": "colorTwo",
+                    "defaultValue": "''",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "string",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 25,
+                    "required": false
+                },
+                {
+                    "name": "debug",
+                    "defaultValue": "false",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "boolean",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 26,
+                    "required": false
+                }
+            ],
+            "outputsClass": [],
+            "propertiesClass": [
+                {
+                    "name": "cms",
+                    "defaultValue": "inject(ColorMetricsService)",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 29
+                },
+                {
+                    "name": "colorOneMeta",
+                    "defaultValue": "null",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "ColorMetaObj | null",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 39
+                },
+                {
+                    "name": "colorTwoMeta",
+                    "defaultValue": "null",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "ColorMetaObj | null",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 41
+                },
+                {
+                    "name": "cus",
+                    "defaultValue": "inject(ColorUtilService)",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 28
+                },
+                {
+                    "name": "differences",
+                    "defaultValue": "new DifferencesDataObj()",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "DifferencesDataObj",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 31
+                },
+                {
+                    "name": "successes",
+                    "defaultValue": "{\r\n    text: null,\r\n    largeText: null,\r\n    objectMinDimension: NaN,\r\n  }",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "SuccessesObj",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 33
+                }
+            ],
+            "methodsClass": [
+                {
+                    "name": "getColorDifference",
+                    "args": [
+                        {
+                            "name": "colOne",
+                            "type": "string | null",
+                            "deprecated": false,
+                            "deprecationMessage": ""
+                        },
+                        {
+                            "name": "colTwo",
+                            "type": "string | null",
+                            "deprecated": false,
+                            "deprecationMessage": ""
+                        }
+                    ],
+                    "optional": false,
+                    "returnType": "void",
+                    "typeParameters": [],
+                    "line": 70,
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "jsdoctags": [
+                        {
+                            "name": "colOne",
+                            "type": "string | null",
+                            "deprecated": false,
+                            "deprecationMessage": "",
+                            "tagName": {
+                                "text": "param"
+                            }
+                        },
+                        {
+                            "name": "colTwo",
+                            "type": "string | null",
+                            "deprecated": false,
+                            "deprecationMessage": "",
+                            "tagName": {
+                                "text": "param"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "getColorMeta",
+                    "args": [
+                        {
+                            "name": "colOne",
+                            "type": "string | null",
+                            "deprecated": false,
+                            "deprecationMessage": ""
+                        },
+                        {
+                            "name": "colTwo",
+                            "type": "string | null",
+                            "deprecated": false,
+                            "deprecationMessage": ""
+                        }
+                    ],
+                    "optional": false,
+                    "returnType": "void",
+                    "typeParameters": [],
+                    "line": 56,
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "jsdoctags": [
+                        {
+                            "name": "colOne",
+                            "type": "string | null",
+                            "deprecated": false,
+                            "deprecationMessage": "",
+                            "tagName": {
+                                "text": "param"
+                            }
+                        },
+                        {
+                            "name": "colTwo",
+                            "type": "string | null",
+                            "deprecated": false,
+                            "deprecationMessage": "",
+                            "tagName": {
+                                "text": "param"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "getSuccesses",
+                    "args": [
+                        {
+                            "name": "colOne",
+                            "type": "string | null",
+                            "deprecated": false,
+                            "deprecationMessage": ""
+                        },
+                        {
+                            "name": "colTwo",
+                            "type": "string | null",
+                            "deprecated": false,
+                            "deprecationMessage": ""
+                        }
+                    ],
+                    "optional": false,
+                    "returnType": "void",
+                    "typeParameters": [],
+                    "line": 91,
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "jsdoctags": [
+                        {
+                            "name": "colOne",
+                            "type": "string | null",
+                            "deprecated": false,
+                            "deprecationMessage": "",
+                            "tagName": {
+                                "text": "param"
+                            }
+                        },
+                        {
+                            "name": "colTwo",
+                            "type": "string | null",
+                            "deprecated": false,
+                            "deprecationMessage": "",
+                            "tagName": {
+                                "text": "param"
+                            }
+                        }
+                    ]
+                }
+            ],
+            "deprecated": false,
+            "deprecationMessage": "",
+            "hostBindings": [],
+            "hostListeners": [],
+            "standalone": true,
+            "imports": [],
+            "description": "",
+            "rawdescription": "\n",
+            "type": "component",
+            "sourceCode": "import { Component, effect, inject, input } from '@angular/core';\r\nimport { ColorUtilService, ColorMetaObj } from '../../services/color-util.service';\r\nimport { ColorMetricsService } from '../../services/color-metrics.service';\r\n\r\nexport class DifferencesDataObj {\r\n  deltaE: number = NaN;\r\n  wcag2Old: number = NaN;\r\n  wcag2New: number = NaN;\r\n  apca: number = NaN;\r\n}\r\nexport class SuccessesObj {\r\n  text: 'pass' | 'fail' | null = null;\r\n  largeText: 'pass' | 'fail' | null = null;\r\n  objectMinDimension: number | string = NaN;\r\n}\r\n\r\n@Component({\r\n  selector: 'app-metadata',\r\n  templateUrl: './metadata.component.html',\r\n  styleUrls: ['./metadata.component.scss'],\r\n  standalone: true,\r\n})\r\nexport class MetadataComponent {\r\n  colorOne = input<string>('');\r\n  colorTwo = input<string>('');\r\n  debug = input<boolean>(false);\r\n\r\n  cus = inject(ColorUtilService);\r\n  cms = inject(ColorMetricsService);\r\n\r\n  differences: DifferencesDataObj = new DifferencesDataObj();\r\n\r\n  successes: SuccessesObj = {\r\n    text: null,\r\n    largeText: null,\r\n    objectMinDimension: NaN,\r\n  };\r\n\r\n  colorOneMeta: ColorMetaObj | null = null;\r\n\r\n  colorTwoMeta: ColorMetaObj | null = null;\r\n\r\n  constructor() {\r\n    effect(() => {\r\n      const colorOne = this.colorOne();\r\n      const colorTwo = this.colorTwo();\r\n\r\n      this.getColorMeta(colorOne, colorTwo);\r\n\r\n      this.getColorDifference(colorOne, colorTwo);\r\n\r\n      this.getSuccesses(colorOne, colorTwo);\r\n    });\r\n  }\r\n\r\n  getColorMeta(colOne: string | null, colTwo: string | null) {\r\n    if (colOne && colTwo) {\r\n      if (this.cus.getColorMeta(colOne)) {\r\n        this.colorOneMeta = this.cus.getColorMeta(colOne);\r\n\r\n        this.colorTwoMeta = this.cus.getColorMeta(colTwo);\r\n      }\r\n    } else {\r\n      if (this.debug()) {\r\n        console.warn(`failed to get color meta`);\r\n      }\r\n    }\r\n  }\r\n\r\n  getColorDifference(colOne: string | null, colTwo: string | null) {\r\n    if (colOne && colTwo) {\r\n      const deltaE = this.cus.calcDeltaE(colOne, colTwo);\r\n      const wcag2New = this.cms.getContrast(colOne, colTwo, 'bpca');\r\n      const wcag2Old = this.cus.calcWcag2(colOne, colTwo);\r\n      const apca = this.cms.getContrast(colOne, colTwo, 'apca');\r\n\r\n      this.differences.deltaE = !deltaE ? NaN : deltaE;\r\n\r\n      this.differences.wcag2New = !wcag2New ? NaN : wcag2New;\r\n\r\n      this.differences.wcag2Old = !wcag2Old ? NaN : wcag2Old;\r\n\r\n      this.differences.apca = !apca ? NaN : apca;\r\n    } else {\r\n      if (this.debug()) {\r\n        console.warn(`failed to get color differences`);\r\n      }\r\n    }\r\n  }\r\n\r\n  getSuccesses(colOne: string | null, colTwo: string | null) {\r\n    if (colOne && colTwo) {\r\n      const wcagNew = this.cms.getContrast(colOne, colTwo, 'bpca');\r\n\r\n      const apcaScore = this.cms.getContrast(colOne, colTwo, 'apca');\r\n\r\n      if (wcagNew && apcaScore) {\r\n        if (wcagNew >= 0 && Math.abs(apcaScore) >= 0) {\r\n          this.successes.text = wcagNew >= 4.5 ? 'pass' : 'fail';\r\n\r\n          this.successes.largeText = wcagNew >= 3 ? 'pass' : 'fail';\r\n\r\n          const minDimension = this.cus.getMinObjectDimension(apcaScore);\r\n\r\n          this.successes.objectMinDimension = Number.isNaN(minDimension)\r\n            ? 'invisible'\r\n            : minDimension;\r\n        } else {\r\n          if (this.debug()) {\r\n            console.warn(`something wonky with calculating scores`);\r\n          }\r\n        }\r\n      } else {\r\n        if (this.debug()) {\r\n          console.warn(`trouble getting scores`);\r\n        }\r\n      }\r\n    } else {\r\n      if (this.debug()) {\r\n        console.warn('no colors for successes');\r\n      }\r\n    }\r\n  }\r\n}\r\n",
+            "assetsDirs": [],
+            "styleUrlsData": [
+                {
+                    "data": ".comp-container {\r\n  display: flex;\r\n  position: relative;\r\n  flex-wrap: wrap;\r\n  align-items: flex-start;\r\n  gap: 0.5rem 4rem;\r\n  justify-content: center;\r\n\r\n  div {\r\n    flex-grow: 1;\r\n    display: flex;\r\n    flex-direction: column;\r\n    max-width: 30ch;\r\n  }\r\n\r\n  h3 {\r\n    text-align: center;\r\n  }\r\n\r\n  table {\r\n    margin-bottom: 1rem;\r\n  }\r\n\r\n  tr {\r\n    :nth-child(2) {\r\n      font-family: var(--mono-font);\r\n      text-align: right;\r\n      font-style: normal;\r\n      padding-left: 1ch;\r\n      min-width: 9ch;\r\n    }\r\n  }\r\n}\r\n",
+                    "styleUrl": "./metadata.component.scss"
+                }
+            ],
+            "stylesData": "",
+            "constructorObj": {
+                "name": "constructor",
+                "description": "",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "args": [],
+                "line": 41
+            },
+            "extends": [],
+            "templateData": "<div class=\"comp-container\">\r\n  <div>\r\n    <h3>Successes and Minimums</h3>\r\n    <table>\r\n      <caption class=\"sr-only\">\r\n        Various pass, fails or minimum dimensions related to visual elements.\r\n      </caption>\r\n      <thead class=\"sr-only\">\r\n        <tr>\r\n          <th>Criteria</th>\r\n          <th>Value</th>\r\n        </tr>\r\n      </thead>\r\n      <tbody>\r\n        <tr>\r\n          <td>Text</td>\r\n          <td>{{ successes.text }}</td>\r\n        </tr>\r\n        <tr>\r\n          <td>Large Text</td>\r\n          <td>{{ successes.largeText }}</td>\r\n        </tr>\r\n        <tr>\r\n          <td>\r\n            <cite><a href=\"#notes-object\">Object</a></cite>\r\n          </td>\r\n          <td>{{ successes.objectMinDimension }}</td>\r\n        </tr>\r\n      </tbody>\r\n    </table>\r\n  </div>\r\n\r\n  <div>\r\n    <h3>Differences</h3>\r\n    <table>\r\n      <caption class=\"sr-only\">\r\n        Differences between Foreground Color and Background Color.\r\n      </caption>\r\n      <thead class=\"sr-only\">\r\n        <tr>\r\n          <th>Measurement</th>\r\n          <th>Value</th>\r\n        </tr>\r\n      </thead>\r\n      <tbody>\r\n        <tr>\r\n          <td>Delta E</td>\r\n          <td>{{ differences.deltaE }}</td>\r\n        </tr>\r\n        <tr>\r\n          <td>\r\n            <cite\r\n              ><a href=\"#notes-perceptual-contrast\">\r\n                Perceptual contrast</a\r\n              ></cite\r\n            >\r\n          </td>\r\n          <td>{{ differences.apca }}</td>\r\n        </tr>\r\n        <tr>\r\n          <td>\r\n            <cite><a href=\"#notes-wcag2-compat\"> WCAG 2 compatible</a></cite>\r\n          </td>\r\n          <td>{{ differences.wcag2New }}</td>\r\n        </tr>\r\n        <tr>\r\n          <td>\r\n            <cite><a href=\"#notes-wcag2\">WCAG 2</a></cite>\r\n          </td>\r\n          <td>{{ differences.wcag2Old }}</td>\r\n        </tr>\r\n      </tbody>\r\n    </table>\r\n  </div>\r\n\r\n  <div>\r\n    <h3>Foreground Color</h3>\r\n    <table>\r\n      <caption class=\"sr-only\">\r\n        Foreground Color Metadata\r\n      </caption>\r\n      <thead class=\"sr-only\">\r\n        <tr>\r\n          <th>Measurement</th>\r\n          <th>Value</th>\r\n        </tr>\r\n      </thead>\r\n      <tbody>\r\n        <tr>\r\n          <td>Saturation</td>\r\n          <td>{{ colorOneMeta?.saturation }}</td>\r\n        </tr>\r\n        <tr>\r\n          <td>Lightness</td>\r\n          <td>{{ colorOneMeta?.lightness }}</td>\r\n        </tr>\r\n        <tr>\r\n          <td>Chroma</td>\r\n          <td>{{ colorOneMeta?.chroma }}</td>\r\n        </tr>\r\n        <tr>\r\n          <td>Hue</td>\r\n          <td>{{ colorOneMeta?.hue }}</td>\r\n        </tr>\r\n      </tbody>\r\n    </table>\r\n  </div>\r\n\r\n  <div>\r\n    <h3>Background Color</h3>\r\n    <table>\r\n      <caption class=\"sr-only\">\r\n        Background Color Metadata\r\n      </caption>\r\n      <thead class=\"sr-only\">\r\n        <tr>\r\n          <th>Measurement</th>\r\n          <th>Value</th>\r\n        </tr>\r\n      </thead>\r\n      <tbody>\r\n        <tr>\r\n          <td>Saturation</td>\r\n          <td>{{ colorTwoMeta?.saturation }}</td>\r\n        </tr>\r\n        <tr>\r\n          <td>Lightness</td>\r\n          <td>{{ colorTwoMeta?.lightness }}</td>\r\n        </tr>\r\n        <tr>\r\n          <td>Chroma</td>\r\n          <td>{{ colorTwoMeta?.chroma }}</td>\r\n        </tr>\r\n        <tr>\r\n          <td>Hue</td>\r\n          <td>{{ colorTwoMeta?.hue }}</td>\r\n        </tr>\r\n      </tbody>\r\n    </table>\r\n  </div>\r\n</div>\r\n"
         },
         {
             "name": "PageComponent",
@@ -2550,7 +3813,7 @@
         "children": []
     },
     "coverage": {
-        "count": 3,
+        "count": 2,
         "status": "low",
         "files": [
             {
@@ -2587,6 +3850,78 @@
                 "name": "ContrastObject",
                 "coveragePercent": 0,
                 "coverageCount": "0/3",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/_components/color-picker/color-picker.component.ts",
+                "type": "component",
+                "linktype": "component",
+                "name": "ColorPickerComponent",
+                "coveragePercent": 0,
+                "coverageCount": "0/15",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/_components/color-slider/color-slider.component.ts",
+                "type": "component",
+                "linktype": "component",
+                "name": "ColorSliderComponent",
+                "coveragePercent": 0,
+                "coverageCount": "0/24",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/_components/color-slider/color-slider.component.ts",
+                "type": "interface",
+                "linktype": "interface",
+                "name": "ResetObject",
+                "coveragePercent": 0,
+                "coverageCount": "0/2",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/_components/copy-to-clipboard-button/copy-to-clipboard-button.component.ts",
+                "type": "component",
+                "linktype": "component",
+                "name": "CopyToClipboardButtonComponent",
+                "coveragePercent": 0,
+                "coverageCount": "0/5",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/_components/copy-to-clipboard-button/copy-to-clipboard-button.component.ts",
+                "type": "class",
+                "linktype": "classe",
+                "name": "CopyToClipboardEvent",
+                "coveragePercent": 0,
+                "coverageCount": "0/3",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/_components/metadata/metadata.component.ts",
+                "type": "component",
+                "linktype": "component",
+                "name": "MetadataComponent",
+                "coveragePercent": 0,
+                "coverageCount": "0/14",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/_components/metadata/metadata.component.ts",
+                "type": "class",
+                "linktype": "classe",
+                "name": "DifferencesDataObj",
+                "coveragePercent": 0,
+                "coverageCount": "0/5",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/_components/metadata/metadata.component.ts",
+                "type": "class",
+                "linktype": "classe",
+                "name": "SuccessesObj",
+                "coveragePercent": 0,
+                "coverageCount": "0/4",
                 "status": "low"
             },
             {
