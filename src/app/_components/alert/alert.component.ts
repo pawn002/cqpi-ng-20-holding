@@ -1,5 +1,5 @@
-import { Component, EventEmitter, input, effect, Output } from '@angular/core';
-import { random, times } from 'lodash-es';
+import { Component, EventEmitter, input, effect, Output, signal, output } from '@angular/core';
+import { random, set, times } from 'lodash-es';
 
 export class AlertMessagObj {
   message: string = '';
@@ -14,11 +14,10 @@ export class AlertMessagObj {
 export class AlertComponent {
   alertMessage = input<AlertMessagObj>(new AlertMessagObj());
 
-  @Output() alertClosed = new EventEmitter<boolean>();
+  alertClosed = output<boolean>();
 
-  showAlert: boolean = false;
-
-  uniqId: string = '';
+  showAlert = signal<boolean>(false);
+  uniqId = signal<string>('');
 
   timeout: number = NaN;
 
@@ -27,9 +26,9 @@ export class AlertComponent {
   }
 
   hideAlert() {
-    this.showAlert = false;
+    this.showAlert.set(false);
 
-    this.uniqId = '';
+    this.uniqId.set('');
 
     this.alertClosed.emit(true);
   }
@@ -39,16 +38,16 @@ export class AlertComponent {
       const alertMessage = this.alertMessage();
 
       if (alertMessage.message) {
-        this.uniqId = this.generateRandomString(12);
+        this.uniqId.set(this.generateRandomString(12));
 
-        this.showAlert = true;
+        this.showAlert.set(true);
 
         if (this.timeout) {
           clearTimeout(this.timeout);
         }
 
         this.timeout = setTimeout(() => {
-          this.showAlert = false;
+          this.showAlert.set(false);
         }, 5000) as unknown as number;
       }
     });
