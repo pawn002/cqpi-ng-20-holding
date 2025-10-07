@@ -1268,12 +1268,12 @@
     "classes": [
         {
             "name": "AlertMessagObj",
-            "id": "class-AlertMessagObj-85a375af6748f4957897e3e9d2fee3768e40b01e576bc4fb878aac1190302b8a012818e84046e793044822da8bd3637a2a90eaa5ca69945e902c5685771cadd6",
+            "id": "class-AlertMessagObj-cb844c208e5c35bbf9a938ca36cb9934d1d3476d8102c0e4d76d9a3dbc09e0488e63303244023084d133ced8680d03d48ec98d722cb07a01911188cbfd9fb2f1",
             "file": "src/app/_components/alert/alert.component.ts",
             "deprecated": false,
             "deprecationMessage": "",
             "type": "class",
-            "sourceCode": "import { Component, EventEmitter, input, effect, Output } from '@angular/core';\r\nimport { random, times } from 'lodash-es';\r\n\r\nexport class AlertMessagObj {\r\n  message: string = '';\r\n}\r\n\r\n@Component({\r\n  selector: 'app-alert',\r\n  templateUrl: './alert.component.html',\r\n  styleUrls: ['./alert.component.scss'],\r\n  standalone: true,\r\n})\r\nexport class AlertComponent {\r\n  alertMessage = input<AlertMessagObj>(new AlertMessagObj());\r\n\r\n  @Output() alertClosed = new EventEmitter<boolean>();\r\n\r\n  showAlert: boolean = false;\r\n\r\n  uniqId: string = '';\r\n\r\n  timeout: number = NaN;\r\n\r\n  generateRandomString(length: number) {\r\n    return times(length, () => random(35).toString(36)).join('');\r\n  }\r\n\r\n  hideAlert() {\r\n    this.showAlert = false;\r\n\r\n    this.uniqId = '';\r\n\r\n    this.alertClosed.emit(true);\r\n  }\r\n\r\n  constructor() {\r\n    effect(() => {\r\n      const alertMessage = this.alertMessage();\r\n\r\n      if (alertMessage.message) {\r\n        this.uniqId = this.generateRandomString(12);\r\n\r\n        this.showAlert = true;\r\n\r\n        if (this.timeout) {\r\n          clearTimeout(this.timeout);\r\n        }\r\n\r\n        this.timeout = setTimeout(() => {\r\n          this.showAlert = false;\r\n        }, 5000) as unknown as number;\r\n      }\r\n    });\r\n  }\r\n}\r\n",
+            "sourceCode": "import { Component, EventEmitter, input, effect, Output, signal, output } from '@angular/core';\r\nimport { random, set, times } from 'lodash-es';\r\n\r\nexport class AlertMessagObj {\r\n  message: string = '';\r\n}\r\n\r\n@Component({\r\n  selector: 'app-alert',\r\n  templateUrl: './alert.component.html',\r\n  styleUrls: ['./alert.component.scss'],\r\n  standalone: true,\r\n})\r\nexport class AlertComponent {\r\n  alertMessage = input<AlertMessagObj>(new AlertMessagObj());\r\n\r\n  alertClosed = output<boolean>();\r\n\r\n  showAlert = signal<boolean>(false);\r\n  uniqId = signal<string>('');\r\n\r\n  timeout: number = NaN;\r\n\r\n  generateRandomString(length: number) {\r\n    return times(length, () => random(35).toString(36)).join('');\r\n  }\r\n\r\n  hideAlert() {\r\n    this.showAlert.set(false);\r\n\r\n    this.uniqId.set('');\r\n\r\n    this.alertClosed.emit(true);\r\n  }\r\n\r\n  constructor() {\r\n    effect(() => {\r\n      const alertMessage = this.alertMessage();\r\n\r\n      if (alertMessage.message) {\r\n        this.uniqId.set(this.generateRandomString(12));\r\n\r\n        this.showAlert.set(true);\r\n\r\n        if (this.timeout) {\r\n          clearTimeout(this.timeout);\r\n        }\r\n\r\n        this.timeout = setTimeout(() => {\r\n          this.showAlert.set(false);\r\n        }, 5000) as unknown as number;\r\n      }\r\n    });\r\n  }\r\n}\r\n",
             "inputsClass": [],
             "outputsClass": [],
             "properties": [
@@ -1348,12 +1348,12 @@
         },
         {
             "name": "ContrastObject",
-            "id": "class-ContrastObject-e359f5dde854ad354ae8974913694e795a4a9cbdb54231ea9539ce361f3d3161b154479411c5c826bd0bffca8def3b5f159c9db55c5f254fd5cf5f8d3b22bcb5",
+            "id": "class-ContrastObject-d690a789bc9169147a4979e2bd070f667d7d3ebeddbdc178ec08562b2ebb90e8f3efa4006e7d6b1d0e284a4525d8b68be73993d18c69dd97ca59d7b1639769ce",
             "file": "src/app/_components/color-contrast/color-contrast.component.ts",
             "deprecated": false,
             "deprecationMessage": "",
             "type": "class",
-            "sourceCode": "import { Component, effect, inject, input } from '@angular/core';\r\nimport { ColorMetricsService, ContrastType } from '../../services/color-metrics.service';\r\nimport { ColorUtilService } from '../../services/color-util.service';\r\n\r\nexport class ContrastObject {\r\n  score: number = NaN;\r\n  type: ContrastType | null = null;\r\n}\r\n\r\n@Component({\r\n  selector: 'app-color-contrast',\r\n  templateUrl: './color-contrast.component.html',\r\n  styleUrls: ['./color-contrast.component.scss'],\r\n  standalone: true,\r\n})\r\nexport class ColorContrastComponent {\r\n  colorOne = input<string>('');\r\n  colorTwo = input<string>('');\r\n  contrastType = input<ContrastType | 'apca object'>('apca');\r\n  debug = input<boolean>(false);\r\n\r\n  cus = inject(ColorUtilService);\r\n  cms = inject(ColorMetricsService);\r\n\r\n  contrastScore: number = NaN;\r\n\r\n  constructor() {\r\n    effect(() => {\r\n      const colorOne = this.colorOne();\r\n      const colorTwo = this.colorTwo();\r\n      const contrastType = this.contrastType();\r\n      const debug = this.debug();\r\n\r\n      if (colorOne && colorTwo && contrastType) {\r\n        const isApcaLike = contrastType.search('apca') > -1 ? true : false;\r\n\r\n        const score = this.cms.getContrast(colorOne, colorTwo, isApcaLike ? 'apca' : 'bpca');\r\n\r\n        this.contrastScore = !score ? NaN : score;\r\n\r\n        if (score) {\r\n          this.contrastScore =\r\n            contrastType === 'apca object'\r\n              ? this.cus.getMinObjectDimension(score)\r\n              : this.contrastScore;\r\n        }\r\n      } else {\r\n        if (debug) {\r\n          console.warn('contrast comp has incomplete bindings');\r\n        }\r\n      }\r\n    });\r\n  }\r\n}\r\n",
+            "sourceCode": "import { Component, effect, inject, input, signal } from '@angular/core';\r\nimport { ColorMetricsService, ContrastType } from '../../services/color-metrics.service';\r\nimport { ColorUtilService } from '../../services/color-util.service';\r\n\r\nexport class ContrastObject {\r\n  score: number = NaN;\r\n  type: ContrastType | null = null;\r\n}\r\n\r\n@Component({\r\n  selector: 'app-color-contrast',\r\n  templateUrl: './color-contrast.component.html',\r\n  styleUrls: ['./color-contrast.component.scss'],\r\n  standalone: true,\r\n})\r\nexport class ColorContrastComponent {\r\n  cus = inject(ColorUtilService);\r\n  cms = inject(ColorMetricsService);\r\n\r\n  colorOne = input<string>('');\r\n  colorTwo = input<string>('');\r\n  contrastType = input<ContrastType | 'apca object'>('apca');\r\n  debug = input<boolean>(false);\r\n\r\n  contrastScore = signal<number>(NaN);\r\n\r\n  constructor() {\r\n    effect(() => {\r\n      const colorOne = this.colorOne();\r\n      const colorTwo = this.colorTwo();\r\n      const contrastType = this.contrastType();\r\n      const debug = this.debug();\r\n\r\n      if (!colorOne || !colorTwo || !contrastType) {\r\n        if (debug) {\r\n          console.warn('contrast comp missing inputs');\r\n        }\r\n\r\n        return;\r\n      }\r\n\r\n      const isApcaLike = contrastType.search('apca') > -1 ? true : false;\r\n\r\n      const score = this.cms.getContrast(colorOne, colorTwo, isApcaLike ? 'apca' : 'bpca');\r\n\r\n      if (score && contrastType === 'apca object') {\r\n        this.contrastScore.set(this.cus.getMinObjectDimension(score));\r\n\r\n        return;\r\n      }\r\n\r\n      this.contrastScore.set(!score ? NaN : score);\r\n    });\r\n  }\r\n}\r\n",
             "inputsClass": [],
             "outputsClass": [],
             "properties": [
@@ -1639,7 +1639,7 @@
     "components": [
         {
             "name": "AlertComponent",
-            "id": "component-AlertComponent-85a375af6748f4957897e3e9d2fee3768e40b01e576bc4fb878aac1190302b8a012818e84046e793044822da8bd3637a2a90eaa5ca69945e902c5685771cadd6",
+            "id": "component-AlertComponent-cb844c208e5c35bbf9a938ca36cb9934d1d3476d8102c0e4d76d9a3dbc09e0488e63303244023084d133ced8680d03d48ec98d722cb07a01911188cbfd9fb2f1",
             "file": "src/app/_components/alert/alert.component.ts",
             "encapsulation": [],
             "entryComponents": [],
@@ -1673,20 +1673,23 @@
             "outputsClass": [
                 {
                     "name": "alertClosed",
-                    "defaultValue": "new EventEmitter<boolean>()",
                     "deprecated": false,
                     "deprecationMessage": "",
+                    "type": "boolean",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
                     "line": 17,
-                    "type": "EventEmitter"
+                    "required": false
                 }
             ],
             "propertiesClass": [
                 {
                     "name": "showAlert",
-                    "defaultValue": "false",
+                    "defaultValue": "signal<boolean>(false)",
                     "deprecated": false,
                     "deprecationMessage": "",
-                    "type": "boolean",
+                    "type": "",
                     "indexKey": "",
                     "optional": false,
                     "description": "",
@@ -1701,18 +1704,18 @@
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 23
+                    "line": 22
                 },
                 {
                     "name": "uniqId",
-                    "defaultValue": "''",
+                    "defaultValue": "signal<string>('')",
                     "deprecated": false,
                     "deprecationMessage": "",
-                    "type": "string",
+                    "type": "",
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 21
+                    "line": 20
                 }
             ],
             "methodsClass": [
@@ -1729,7 +1732,7 @@
                     "optional": false,
                     "returnType": "any",
                     "typeParameters": [],
-                    "line": 25,
+                    "line": 24,
                     "deprecated": false,
                     "deprecationMessage": "",
                     "jsdoctags": [
@@ -1750,7 +1753,7 @@
                     "optional": false,
                     "returnType": "void",
                     "typeParameters": [],
-                    "line": 29,
+                    "line": 28,
                     "deprecated": false,
                     "deprecationMessage": ""
                 }
@@ -1764,7 +1767,7 @@
             "description": "",
             "rawdescription": "\n",
             "type": "component",
-            "sourceCode": "import { Component, EventEmitter, input, effect, Output } from '@angular/core';\r\nimport { random, times } from 'lodash-es';\r\n\r\nexport class AlertMessagObj {\r\n  message: string = '';\r\n}\r\n\r\n@Component({\r\n  selector: 'app-alert',\r\n  templateUrl: './alert.component.html',\r\n  styleUrls: ['./alert.component.scss'],\r\n  standalone: true,\r\n})\r\nexport class AlertComponent {\r\n  alertMessage = input<AlertMessagObj>(new AlertMessagObj());\r\n\r\n  @Output() alertClosed = new EventEmitter<boolean>();\r\n\r\n  showAlert: boolean = false;\r\n\r\n  uniqId: string = '';\r\n\r\n  timeout: number = NaN;\r\n\r\n  generateRandomString(length: number) {\r\n    return times(length, () => random(35).toString(36)).join('');\r\n  }\r\n\r\n  hideAlert() {\r\n    this.showAlert = false;\r\n\r\n    this.uniqId = '';\r\n\r\n    this.alertClosed.emit(true);\r\n  }\r\n\r\n  constructor() {\r\n    effect(() => {\r\n      const alertMessage = this.alertMessage();\r\n\r\n      if (alertMessage.message) {\r\n        this.uniqId = this.generateRandomString(12);\r\n\r\n        this.showAlert = true;\r\n\r\n        if (this.timeout) {\r\n          clearTimeout(this.timeout);\r\n        }\r\n\r\n        this.timeout = setTimeout(() => {\r\n          this.showAlert = false;\r\n        }, 5000) as unknown as number;\r\n      }\r\n    });\r\n  }\r\n}\r\n",
+            "sourceCode": "import { Component, EventEmitter, input, effect, Output, signal, output } from '@angular/core';\r\nimport { random, set, times } from 'lodash-es';\r\n\r\nexport class AlertMessagObj {\r\n  message: string = '';\r\n}\r\n\r\n@Component({\r\n  selector: 'app-alert',\r\n  templateUrl: './alert.component.html',\r\n  styleUrls: ['./alert.component.scss'],\r\n  standalone: true,\r\n})\r\nexport class AlertComponent {\r\n  alertMessage = input<AlertMessagObj>(new AlertMessagObj());\r\n\r\n  alertClosed = output<boolean>();\r\n\r\n  showAlert = signal<boolean>(false);\r\n  uniqId = signal<string>('');\r\n\r\n  timeout: number = NaN;\r\n\r\n  generateRandomString(length: number) {\r\n    return times(length, () => random(35).toString(36)).join('');\r\n  }\r\n\r\n  hideAlert() {\r\n    this.showAlert.set(false);\r\n\r\n    this.uniqId.set('');\r\n\r\n    this.alertClosed.emit(true);\r\n  }\r\n\r\n  constructor() {\r\n    effect(() => {\r\n      const alertMessage = this.alertMessage();\r\n\r\n      if (alertMessage.message) {\r\n        this.uniqId.set(this.generateRandomString(12));\r\n\r\n        this.showAlert.set(true);\r\n\r\n        if (this.timeout) {\r\n          clearTimeout(this.timeout);\r\n        }\r\n\r\n        this.timeout = setTimeout(() => {\r\n          this.showAlert.set(false);\r\n        }, 5000) as unknown as number;\r\n      }\r\n    });\r\n  }\r\n}\r\n",
             "assetsDirs": [],
             "styleUrlsData": [
                 {
@@ -1779,10 +1782,10 @@
                 "deprecated": false,
                 "deprecationMessage": "",
                 "args": [],
-                "line": 35
+                "line": 34
             },
             "extends": [],
-            "templateData": "<div class=\"comp-container\" role=\"alert\">\r\n  <div class=\"alert-content\">\r\n    @if (showAlert) {\r\n      <p [innerText]=\"alertMessage().message\"></p>\r\n      <p class=\"msg-id\">Message ID: {{ uniqId }}</p>\r\n      <!-- <button (click)=\"hideAlert()\"><span>Dismiss</span></button> -->\r\n    }\r\n    <!-- <ng-container\r\n    >\r\n    </ng-container> -->\r\n  </div>\r\n</div>\r\n"
+            "templateData": "<div class=\"comp-container\" role=\"alert\">\r\n  <div class=\"alert-content\">\r\n    @if (showAlert()) {\r\n      <p [innerText]=\"alertMessage().message\"></p>\r\n      <p class=\"msg-id\">Message ID: {{ uniqId() }}</p>\r\n    }\r\n  </div>\r\n</div>\r\n"
         },
         {
             "name": "App",
@@ -1978,7 +1981,7 @@
         },
         {
             "name": "ColorContrastComponent",
-            "id": "component-ColorContrastComponent-e359f5dde854ad354ae8974913694e795a4a9cbdb54231ea9539ce361f3d3161b154479411c5c826bd0bffca8def3b5f159c9db55c5f254fd5cf5f8d3b22bcb5",
+            "id": "component-ColorContrastComponent-d690a789bc9169147a4979e2bd070f667d7d3ebeddbdc178ec08562b2ebb90e8f3efa4006e7d6b1d0e284a4525d8b68be73993d18c69dd97ca59d7b1639769ce",
             "file": "src/app/_components/color-contrast/color-contrast.component.ts",
             "encapsulation": [],
             "entryComponents": [],
@@ -2005,7 +2008,7 @@
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 17,
+                    "line": 20,
                     "required": false
                 },
                 {
@@ -2017,7 +2020,7 @@
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 18,
+                    "line": 21,
                     "required": false
                 },
                 {
@@ -2029,7 +2032,7 @@
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 19,
+                    "line": 22,
                     "required": false
                 },
                 {
@@ -2041,7 +2044,7 @@
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 20,
+                    "line": 23,
                     "required": false
                 }
             ],
@@ -2056,14 +2059,14 @@
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 23
+                    "line": 18
                 },
                 {
                     "name": "contrastScore",
-                    "defaultValue": "NaN",
+                    "defaultValue": "signal<number>(NaN)",
                     "deprecated": false,
                     "deprecationMessage": "",
-                    "type": "number",
+                    "type": "",
                     "indexKey": "",
                     "optional": false,
                     "description": "",
@@ -2078,7 +2081,7 @@
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 22
+                    "line": 17
                 }
             ],
             "methodsClass": [],
@@ -2091,7 +2094,7 @@
             "description": "",
             "rawdescription": "\n",
             "type": "component",
-            "sourceCode": "import { Component, effect, inject, input } from '@angular/core';\r\nimport { ColorMetricsService, ContrastType } from '../../services/color-metrics.service';\r\nimport { ColorUtilService } from '../../services/color-util.service';\r\n\r\nexport class ContrastObject {\r\n  score: number = NaN;\r\n  type: ContrastType | null = null;\r\n}\r\n\r\n@Component({\r\n  selector: 'app-color-contrast',\r\n  templateUrl: './color-contrast.component.html',\r\n  styleUrls: ['./color-contrast.component.scss'],\r\n  standalone: true,\r\n})\r\nexport class ColorContrastComponent {\r\n  colorOne = input<string>('');\r\n  colorTwo = input<string>('');\r\n  contrastType = input<ContrastType | 'apca object'>('apca');\r\n  debug = input<boolean>(false);\r\n\r\n  cus = inject(ColorUtilService);\r\n  cms = inject(ColorMetricsService);\r\n\r\n  contrastScore: number = NaN;\r\n\r\n  constructor() {\r\n    effect(() => {\r\n      const colorOne = this.colorOne();\r\n      const colorTwo = this.colorTwo();\r\n      const contrastType = this.contrastType();\r\n      const debug = this.debug();\r\n\r\n      if (colorOne && colorTwo && contrastType) {\r\n        const isApcaLike = contrastType.search('apca') > -1 ? true : false;\r\n\r\n        const score = this.cms.getContrast(colorOne, colorTwo, isApcaLike ? 'apca' : 'bpca');\r\n\r\n        this.contrastScore = !score ? NaN : score;\r\n\r\n        if (score) {\r\n          this.contrastScore =\r\n            contrastType === 'apca object'\r\n              ? this.cus.getMinObjectDimension(score)\r\n              : this.contrastScore;\r\n        }\r\n      } else {\r\n        if (debug) {\r\n          console.warn('contrast comp has incomplete bindings');\r\n        }\r\n      }\r\n    });\r\n  }\r\n}\r\n",
+            "sourceCode": "import { Component, effect, inject, input, signal } from '@angular/core';\r\nimport { ColorMetricsService, ContrastType } from '../../services/color-metrics.service';\r\nimport { ColorUtilService } from '../../services/color-util.service';\r\n\r\nexport class ContrastObject {\r\n  score: number = NaN;\r\n  type: ContrastType | null = null;\r\n}\r\n\r\n@Component({\r\n  selector: 'app-color-contrast',\r\n  templateUrl: './color-contrast.component.html',\r\n  styleUrls: ['./color-contrast.component.scss'],\r\n  standalone: true,\r\n})\r\nexport class ColorContrastComponent {\r\n  cus = inject(ColorUtilService);\r\n  cms = inject(ColorMetricsService);\r\n\r\n  colorOne = input<string>('');\r\n  colorTwo = input<string>('');\r\n  contrastType = input<ContrastType | 'apca object'>('apca');\r\n  debug = input<boolean>(false);\r\n\r\n  contrastScore = signal<number>(NaN);\r\n\r\n  constructor() {\r\n    effect(() => {\r\n      const colorOne = this.colorOne();\r\n      const colorTwo = this.colorTwo();\r\n      const contrastType = this.contrastType();\r\n      const debug = this.debug();\r\n\r\n      if (!colorOne || !colorTwo || !contrastType) {\r\n        if (debug) {\r\n          console.warn('contrast comp missing inputs');\r\n        }\r\n\r\n        return;\r\n      }\r\n\r\n      const isApcaLike = contrastType.search('apca') > -1 ? true : false;\r\n\r\n      const score = this.cms.getContrast(colorOne, colorTwo, isApcaLike ? 'apca' : 'bpca');\r\n\r\n      if (score && contrastType === 'apca object') {\r\n        this.contrastScore.set(this.cus.getMinObjectDimension(score));\r\n\r\n        return;\r\n      }\r\n\r\n      this.contrastScore.set(!score ? NaN : score);\r\n    });\r\n  }\r\n}\r\n",
             "assetsDirs": [],
             "styleUrlsData": [
                 {
@@ -2109,11 +2112,11 @@
                 "line": 25
             },
             "extends": [],
-            "templateData": "<!-- This comp is for users with typical vision. The same information is delivered with better UX for a user who is blind in the Color Metadata section. -->\r\n<div class=\"comp-container\" aria-hidden=\"true\">\r\n  <div class=\"score-container\">\r\n    <label class=\"sr-only\" for=\"contrast-score\"\r\n      >Contrast Score for Selected Colors</label\r\n    >\r\n\r\n    <div id=\"contrast-score\" class=\"score\">\r\n      {{ contrastScore ? contrastScore : \"!\" }}\r\n      <!-- {{ contrastScore }} -->\r\n    </div>\r\n  </div>\r\n</div>\r\n"
+            "templateData": "<!-- This comp is for users with typical vision. The same information is delivered with better UX for a user who is blind in the Color Metadata section. -->\r\n<div class=\"comp-container\" aria-hidden=\"true\">\r\n  <div class=\"score-container\">\r\n    <label class=\"sr-only\" for=\"contrast-score\"\r\n      >Contrast Score for Selected Colors</label\r\n    >\r\n\r\n    <div id=\"contrast-score\" class=\"score\">\r\n      {{ contrastScore() ? contrastScore() : \"!\" }}\r\n    </div>\r\n  </div>\r\n</div>\r\n"
         },
         {
             "name": "ColorPickerComponent",
-            "id": "component-ColorPickerComponent-748be270b0cb001d9373b705430bb6c3182a6d15a15a9dc8d6d2138b3b846862b77089a0f2b4f3c67040ae54c976579c54f5089587e94f5182bbca93cf556a11",
+            "id": "component-ColorPickerComponent-b6920869a71c69482a776ac219e08ded77208cf7aa9a2040df8fc6e6f914d05c320ec59287871de02f52c85bc26b9c2adc934ffd13799ef1e7c5d0131d6cfcb6",
             "file": "src/app/_components/color-picker/color-picker.component.ts",
             "encapsulation": [],
             "entryComponents": [],
@@ -2140,7 +2143,7 @@
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 19,
+                    "line": 21,
                     "required": false
                 },
                 {
@@ -2152,7 +2155,7 @@
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 22,
+                    "line": 24,
                     "required": false
                 },
                 {
@@ -2164,7 +2167,7 @@
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 20,
+                    "line": 22,
                     "required": false
                 },
                 {
@@ -2176,7 +2179,7 @@
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 17,
+                    "line": 19,
                     "required": false
                 },
                 {
@@ -2188,19 +2191,11 @@
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 18,
+                    "line": 20,
                     "required": false
                 }
             ],
             "outputsClass": [
-                {
-                    "name": "selectedColor",
-                    "defaultValue": "new EventEmitter<string>()",
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "line": 24,
-                    "type": "EventEmitter"
-                },
                 {
                     "name": "comparedColor",
                     "defaultValue": "''",
@@ -2210,32 +2205,43 @@
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 22,
+                    "line": 24,
+                    "required": false
+                },
+                {
+                    "name": "selectedColor",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "string",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 26,
                     "required": false
                 }
             ],
             "propertiesClass": [
                 {
                     "name": "uiColor",
-                    "defaultValue": "''",
+                    "defaultValue": "signal<string>('')",
                     "deprecated": false,
                     "deprecationMessage": "",
-                    "type": "string",
+                    "type": "",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 30
+                },
+                {
+                    "name": "uiComparedColor",
+                    "defaultValue": "signal<string>('')",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "",
                     "indexKey": "",
                     "optional": false,
                     "description": "",
                     "line": 28
-                },
-                {
-                    "name": "uiComparedColor",
-                    "defaultValue": "''",
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "type": "string",
-                    "indexKey": "",
-                    "optional": false,
-                    "description": "",
-                    "line": 26
                 }
             ],
             "methodsClass": [
@@ -2252,7 +2258,7 @@
                     "optional": false,
                     "returnType": "void",
                     "typeParameters": [],
-                    "line": 30,
+                    "line": 32,
                     "deprecated": false,
                     "deprecationMessage": "",
                     "jsdoctags": [
@@ -2280,7 +2286,7 @@
                     "optional": false,
                     "returnType": "void",
                     "typeParameters": [],
-                    "line": 38,
+                    "line": 40,
                     "deprecated": false,
                     "deprecationMessage": "",
                     "jsdoctags": [
@@ -2301,7 +2307,7 @@
                     "optional": false,
                     "returnType": "void",
                     "typeParameters": [],
-                    "line": 48,
+                    "line": 50,
                     "deprecated": false,
                     "deprecationMessage": ""
                 },
@@ -2318,7 +2324,7 @@
                     "optional": false,
                     "returnType": "void",
                     "typeParameters": [],
-                    "line": 52,
+                    "line": 54,
                     "deprecated": false,
                     "deprecationMessage": "",
                     "jsdoctags": [
@@ -2343,7 +2349,7 @@
             "description": "",
             "rawdescription": "\n",
             "type": "component",
-            "sourceCode": "import {\r\n  Component,\r\n  effect,\r\n  EventEmitter,\r\n  input,\r\n  model,\r\n  Output,\r\n} from '@angular/core';\r\n\r\n@Component({\r\n  selector: 'app-color-picker',\r\n  templateUrl: './color-picker.component.html',\r\n  styleUrls: ['./color-picker.component.scss'],\r\n  standalone: true,\r\n})\r\nexport class ColorPickerComponent {\r\n  inputId = input<string>('fg-color');\r\n  inputName = input<string>('foreground color');\r\n  color = input<string>('');\r\n  debug = input<boolean>(false);\r\n\r\n  comparedColor = model<string>('');\r\n\r\n  @Output() selectedColor = new EventEmitter<string>();\r\n\r\n  uiComparedColor: string = '';\r\n\r\n  uiColor: string = '';\r\n\r\n  handleColorChange(inputColor: string) {\r\n    // update ui main color\r\n    this.uiColor = inputColor;\r\n\r\n    // send out color for use in other comps\r\n    this.selectedColor.emit(inputColor);\r\n  }\r\n\r\n  handleInputEvent(event: Event) {\r\n    const inputElement = event.target as HTMLInputElement;\r\n\r\n    const selectedColor = inputElement.value;\r\n\r\n    this.resetUiComparedColor();\r\n\r\n    this.handleColorChange(selectedColor);\r\n  }\r\n\r\n  resetUiComparedColor() {\r\n    this.uiComparedColor = 'transparent';\r\n  }\r\n\r\n  updateInputValue(color: string) {\r\n    const targetInput = document.getElementById(\r\n      this.inputId(),\r\n    ) as HTMLInputElement;\r\n\r\n    if (targetInput) {\r\n      targetInput.value = color;\r\n    } else {\r\n      console.error(`something went wrong in color picker comp.`);\r\n    }\r\n  }\r\n\r\n  constructor() {\r\n    effect(() => {\r\n      const comparedColor = this.comparedColor();\r\n\r\n      this.uiComparedColor = comparedColor;\r\n    });\r\n\r\n    effect(() => {\r\n      const colorFromParent = this.color();\r\n\r\n      if (colorFromParent) {\r\n        this.handleColorChange(colorFromParent);\r\n\r\n        this.updateInputValue(colorFromParent);\r\n\r\n        this.resetUiComparedColor();\r\n      } else {\r\n        if (this.debug()) {\r\n          console.warn('no color from parent');\r\n        }\r\n      }\r\n    });\r\n  }\r\n}\r\n",
+            "sourceCode": "import {\r\n  Component,\r\n  effect,\r\n  EventEmitter,\r\n  input,\r\n  model,\r\n  output,\r\n  Output,\r\n  signal,\r\n} from '@angular/core';\r\n\r\n@Component({\r\n  selector: 'app-color-picker',\r\n  templateUrl: './color-picker.component.html',\r\n  styleUrls: ['./color-picker.component.scss'],\r\n  standalone: true,\r\n})\r\nexport class ColorPickerComponent {\r\n  inputId = input<string>('fg-color');\r\n  inputName = input<string>('foreground color');\r\n  color = input<string>('');\r\n  debug = input<boolean>(false);\r\n\r\n  comparedColor = model<string>('');\r\n\r\n  selectedColor = output<string>();\r\n\r\n  uiComparedColor = signal<string>('');\r\n\r\n  uiColor = signal<string>('');\r\n\r\n  handleColorChange(inputColor: string) {\r\n    // update ui main color\r\n    this.uiColor.set(inputColor);\r\n\r\n    // send out color for use in other comps\r\n    this.selectedColor.emit(inputColor);\r\n  }\r\n\r\n  handleInputEvent(event: Event) {\r\n    const inputElement = event.target as HTMLInputElement;\r\n\r\n    const selectedColor = inputElement.value;\r\n\r\n    this.resetUiComparedColor();\r\n\r\n    this.handleColorChange(selectedColor);\r\n  }\r\n\r\n  resetUiComparedColor() {\r\n    this.uiComparedColor.set('transparent');\r\n  }\r\n\r\n  updateInputValue(color: string) {\r\n    const targetInput = document.getElementById(this.inputId()) as HTMLInputElement;\r\n\r\n    if (!targetInput) {\r\n      if (this.debug()) {\r\n        console.error(`no input found with id: ${this.inputId()}`);\r\n      }\r\n\r\n      return;\r\n    }\r\n\r\n    targetInput.value = color;\r\n  }\r\n\r\n  constructor() {\r\n    effect(() => {\r\n      const comparedColor = this.comparedColor();\r\n\r\n      this.uiComparedColor.set(comparedColor);\r\n    });\r\n\r\n    effect(() => {\r\n      const colorFromParent = this.color();\r\n\r\n      this.handleColorChange(colorFromParent);\r\n\r\n      this.updateInputValue(colorFromParent);\r\n\r\n      this.resetUiComparedColor();\r\n    });\r\n  }\r\n}\r\n",
             "assetsDirs": [],
             "styleUrlsData": [
                 {
@@ -2358,10 +2364,10 @@
                 "deprecated": false,
                 "deprecationMessage": "",
                 "args": [],
-                "line": 62
+                "line": 66
             },
             "extends": [],
-            "templateData": "<div class=\"comp-container\">\r\n  <label class=\"sr-only\" [for]=\"inputId()\">Color Picker One</label>\r\n  <input\r\n    type=\"color\"\r\n    [id]=\"inputId()\"\r\n    [name]=\"inputName()\"\r\n    (input)=\"handleInputEvent($event)\"\r\n  />\r\n\r\n  <div\r\n    class=\"color-preview\"\r\n    [style.borderColor]=\"uiComparedColor\"\r\n    [style.backgroundColor]=\"uiColor\"\r\n  ></div>\r\n</div>\r\n"
+            "templateData": "<div class=\"comp-container\">\r\n  <label class=\"sr-only\" [for]=\"inputId()\">Color Picker One</label>\r\n  <input\r\n    type=\"color\"\r\n    [id]=\"inputId()\"\r\n    [name]=\"inputName()\"\r\n    (input)=\"handleInputEvent($event)\"\r\n  />\r\n\r\n  <div\r\n    class=\"color-preview\"\r\n    [style.borderColor]=\"uiComparedColor()\"\r\n    [style.backgroundColor]=\"uiColor()\"\r\n  ></div>\r\n</div>\r\n"
         },
         {
             "name": "ColorSliderComponent",

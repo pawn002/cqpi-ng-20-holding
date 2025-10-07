@@ -4,7 +4,9 @@ import {
   EventEmitter,
   input,
   model,
+  output,
   Output,
+  signal,
 } from '@angular/core';
 
 @Component({
@@ -21,15 +23,15 @@ export class ColorPickerComponent {
 
   comparedColor = model<string>('');
 
-  @Output() selectedColor = new EventEmitter<string>();
+  selectedColor = output<string>();
 
-  uiComparedColor: string = '';
+  uiComparedColor = signal<string>('');
 
-  uiColor: string = '';
+  uiColor = signal<string>('');
 
   handleColorChange(inputColor: string) {
     // update ui main color
-    this.uiColor = inputColor;
+    this.uiColor.set(inputColor);
 
     // send out color for use in other comps
     this.selectedColor.emit(inputColor);
@@ -46,42 +48,38 @@ export class ColorPickerComponent {
   }
 
   resetUiComparedColor() {
-    this.uiComparedColor = 'transparent';
+    this.uiComparedColor.set('transparent');
   }
 
   updateInputValue(color: string) {
-    const targetInput = document.getElementById(
-      this.inputId(),
-    ) as HTMLInputElement;
+    const targetInput = document.getElementById(this.inputId()) as HTMLInputElement;
 
-    if (targetInput) {
-      targetInput.value = color;
-    } else {
-      console.error(`something went wrong in color picker comp.`);
+    if (!targetInput) {
+      if (this.debug()) {
+        console.error(`no input found with id: ${this.inputId()}`);
+      }
+
+      return;
     }
+
+    targetInput.value = color;
   }
 
   constructor() {
     effect(() => {
       const comparedColor = this.comparedColor();
 
-      this.uiComparedColor = comparedColor;
+      this.uiComparedColor.set(comparedColor);
     });
 
     effect(() => {
       const colorFromParent = this.color();
 
-      if (colorFromParent) {
-        this.handleColorChange(colorFromParent);
+      this.handleColorChange(colorFromParent);
 
-        this.updateInputValue(colorFromParent);
+      this.updateInputValue(colorFromParent);
 
-        this.resetUiComparedColor();
-      } else {
-        if (this.debug()) {
-          console.warn('no color from parent');
-        }
-      }
+      this.resetUiComparedColor();
     });
   }
 }
