@@ -1,4 +1,4 @@
-import { Component, effect, inject, input } from '@angular/core';
+import { Component, effect, inject, input, signal } from '@angular/core';
 import { ColorMetricsService, ContrastType } from '../../services/color-metrics.service';
 import { ColorUtilService } from '../../services/color-util.service';
 
@@ -14,15 +14,15 @@ export class ContrastObject {
   standalone: true,
 })
 export class ColorContrastComponent {
+  cus = inject(ColorUtilService);
+  cms = inject(ColorMetricsService);
+
   colorOne = input<string>('');
   colorTwo = input<string>('');
   contrastType = input<ContrastType | 'apca object'>('apca');
   debug = input<boolean>(false);
 
-  cus = inject(ColorUtilService);
-  cms = inject(ColorMetricsService);
-
-  contrastScore: number = NaN;
+  contrastScore = signal<number>(NaN);
 
   constructor() {
     effect(() => {
@@ -31,24 +31,25 @@ export class ColorContrastComponent {
       const contrastType = this.contrastType();
       const debug = this.debug();
 
-      if (colorOne && colorTwo && contrastType) {
-        const isApcaLike = contrastType.search('apca') > -1 ? true : false;
-
-        const score = this.cms.getContrast(colorOne, colorTwo, isApcaLike ? 'apca' : 'bpca');
-
-        this.contrastScore = !score ? NaN : score;
-
-        if (score) {
-          this.contrastScore =
-            contrastType === 'apca object'
-              ? this.cus.getMinObjectDimension(score)
-              : this.contrastScore;
-        }
-      } else {
+      if (!colorOne || !colorTwo || !contrastType) {
         if (debug) {
-          console.warn('contrast comp has incomplete bindings');
+          console.warn('contrast comp missing inputs');
         }
+
+        return;
       }
+
+      const isApcaLike = contrastType.search('apca') > -1 ? true : false;
+
+      const score = this.cms.getContrast(colorOne, colorTwo, isApcaLike ? 'apca' : 'bpca');
+
+      if (score && contrastType === 'apca object') {
+        this.contrastScore.set(this.cus.getMinObjectDimension(score));
+
+        return;
+      }
+
+      this.contrastScore.set(!score ? NaN : score);
     });
   }
 }
