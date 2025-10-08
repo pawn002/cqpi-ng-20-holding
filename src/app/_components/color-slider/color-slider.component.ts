@@ -1,4 +1,15 @@
-import { Component, input, Output, EventEmitter, inject, effect } from '@angular/core';
+import {
+  Component,
+  input,
+  Output,
+  EventEmitter,
+  inject,
+  effect,
+  output,
+  signal,
+  viewChild,
+  ElementRef,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ColorUtilService } from '../../services/color-util.service';
 
@@ -14,25 +25,27 @@ export interface ResetObject {
   standalone: true,
 })
 export class ColorSliderComponent {
+  cus = inject(ColorUtilService);
+
+  debug = input<boolean>(false);
+
+  slideContainer = viewChild<ElementRef>('sliderContainer');
+
   id = input<string | 'slider-0'>('slider-0');
   name = input<string | 'color-slider'>('color-slider');
   color = input<string>('');
   constantChroma = input<boolean>(false);
   showGradient = input<boolean>(false);
   resetSlider = input<ResetObject | null>(null);
-  debug = input<boolean>(false);
 
-  @Output() colorVariant = new EventEmitter<string | null>();
+  colorVariant = output<string | null>();
 
-  cus = inject(ColorUtilService);
-
-  devColorVariant: string = '';
-
-  slideInterval: number = NaN;
-  slideMin: number = NaN;
-  slideMax: number = NaN;
-  initValue: number = NaN;
-  value: number = NaN;
+  devColorVariant = signal<string>('');
+  slideMin = signal<number>(NaN);
+  slideMax = signal<number>(NaN);
+  slideInterval = signal<number>(NaN);
+  value = signal<number>(NaN);
+  initValue = signal<number>(NaN);
 
   constructor() {
     effect(() => {
@@ -41,14 +54,26 @@ export class ColorSliderComponent {
       const resetSlider = this.resetSlider();
       const debug = this.debug();
 
+      if (!this.slideContainer()) {
+        if (debug) {
+          console.warn(`no slide container view child yet.`);
+        }
+
+        return;
+      }
+
+      if (!boundColor) {
+        if (debug) {
+          console.error(`no color specified`);
+        }
+
+        return;
+      }
+
       if (boundColor) {
         this.getAndSetLightnessRange(boundColor, {
           constantChroma: this.constantChroma(),
         });
-      } else {
-        if (debug) {
-          console.warn(`no color specified to comp`);
-        }
       }
 
       if (showGradient) {
@@ -59,7 +84,7 @@ export class ColorSliderComponent {
         this.gradient('off');
       }
 
-      if (resetSlider && this.initValue) {
+      if (resetSlider && this.initValue()) {
         this.reset();
       }
     });
@@ -72,38 +97,40 @@ export class ColorSliderComponent {
     this.colorVariant.emit(color);
 
     if (this.debug()) {
-      this.devColorVariant = color;
+      this.devColorVariant.set(color);
     }
   }
 
   async getAndSetLightnessRange(color: string, options?: { constantChroma: boolean }) {
     const rangeObject = await this.cus.getMinMaxLight(color);
 
-    if (rangeObject) {
-      this.sendInitialLightVariant();
+    if (!rangeObject) {
+      console.error(`no range object for color ${color}`);
 
-      this.slideMin = 0;
-      this.slideMax = 1;
-
-      if (options?.constantChroma) {
-        this.slideMin = rangeObject.lightMin;
-
-        this.slideMax = rangeObject.lightMax;
-      }
-
-      this.slideInterval = (this.slideMax - this.slideMin) / 80;
-
-      const lightnessIndex = 0;
-      const initialSlideValue = rangeObject.originalCoords[lightnessIndex];
-
-      this.initValue = initialSlideValue;
-
-      this.value = initialSlideValue;
-
-      this.redefineGradientStops(this.slideMin, this.slideMax);
-    } else {
-      console.error(`no range object for slider`);
+      return;
     }
+
+    this.sendInitialLightVariant();
+
+    this.slideMin.set(0);
+    this.slideMax.set(1);
+
+    if (options?.constantChroma) {
+      this.slideMin.set(rangeObject.lightMin);
+
+      this.slideMax.set(rangeObject.lightMax);
+    }
+
+    this.slideInterval.set((this.slideMax() - this.slideMin()) / 80);
+
+    const lightnessIndex = 0;
+    const initialSlideValue = rangeObject.originalCoords[lightnessIndex];
+
+    this.initValue.set(initialSlideValue);
+
+    this.value.set(initialSlideValue);
+
+    this.redefineGradientStops(this.slideMin(), this.slideMax());
   }
 
   handleSliding(event: Event) {
@@ -120,7 +147,7 @@ export class ColorSliderComponent {
         if (this.debug()) {
           console.log(`slide modding ${this.color} to ${lightnessVariant}`);
 
-          this.devColorVariant = !lightnessVariant ? '' : lightnessVariant;
+          this.devColorVariant.set(!lightnessVariant ? '' : lightnessVariant);
         }
 
         this.colorVariant.emit(lightnessVariant);
@@ -144,21 +171,22 @@ export class ColorSliderComponent {
   }
 
   gradient(val: 'on' | 'off') {
-    const compId = this.id();
+    const targetElem = this.slideContainer()?.nativeElement as HTMLElement;
 
-    // TODO: Anguar way to do this?
-    const targetElem = document.getElementById(`cc-${compId}`) as HTMLElement;
-
-    if (targetElem) {
-      if (val === 'on') {
-        targetElem.style.background = 'var(--gradient-background)';
+    if (!targetElem) {
+      if (this.debug()) {
+        console.warn(`no elem to assign gradient to.`);
       }
 
-      if (val === 'off') {
-        targetElem.style.background = 'var(--default-background)';
-      }
-    } else {
-      console.warn(`no elem to assign gradient to.`);
+      return;
+    }
+
+    if (val === 'on') {
+      targetElem.style.background = 'var(--gradient-background)';
+    }
+
+    if (val === 'off') {
+      targetElem.style.background = 'var(--default-background)';
     }
   }
 

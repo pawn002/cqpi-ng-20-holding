@@ -1,18 +1,18 @@
-<div [id]="'cc-' + id()" class="comp-container">
+<div #sliderContainer [id]="'cc-' + id()" class="comp-container">
   <label [for]="id()" class="sr-only">Chroma and hue bound Lightness</label>
 
-  @if (slideMin != slideMax) {
+  @if (slideMin() !== slideMax()) {
     <input
       type="range"
       [name]="name()"
       [id]="id()"
-      [min]="slideMin"
-      [max]="slideMax"
-      [step]="slideInterval"
-      [value]="value"
+      [min]="slideMin()"
+      [max]="slideMax()"
+      [step]="slideInterval()"
+      [value]="value()"
       (input)="handleSliding($event)"
     />
-  } @else if (slideMin === slideMax) {
+  } @else if (slideMin() === slideMax()) {
     <div class="special-case">
       <div>!</div>
     </div>
@@ -24,7 +24,7 @@
 
   <div
     class="light-variant-chip"
-    [style.borderColor]="devColorVariant"
+    [style.borderColor]="devColorVariant()"
     [style.backgroundColor]="color()"
   ></div>
 </div>
