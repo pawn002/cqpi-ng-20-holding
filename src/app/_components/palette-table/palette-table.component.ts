@@ -1,4 +1,13 @@
-import { Component, Output, EventEmitter, inject, input, effect } from '@angular/core';
+import {
+  Component,
+  Output,
+  EventEmitter,
+  inject,
+  input,
+  signal,
+  computed,
+  effect,
+} from '@angular/core';
 import { ColorUtilService } from '../../services/color-util.service';
 
 export class TableColorCell {
@@ -27,41 +36,29 @@ export class PaletteTableComponent {
 
   @Output() selectedColor = new EventEmitter<TableColorCell>();
 
-  cus = inject(ColorUtilService);
+  readonly cus = inject(ColorUtilService);
 
-  lightSteps = 5;
-  chromaSteps = 14;
+  readonly lightSteps = 5;
+  readonly chromaSteps = 14;
 
-  tableHeaders: Array<number> = [];
-
-  // An array of arrays where each array is a 'row' of data, and objects are cells of data.
-  dataStruct: TableData = [];
+  // Signals for table data and headers
+  readonly dataStruct = signal<TableData>([]);
+  readonly tableHeaders = computed<number[]>(() => {
+    const data = this.dataStruct();
+    if (!data.length || !data[0].length) return [];
+    return data[0].map((cell) => cell.chroma);
+  });
 
   constructor() {
     effect(() => {
       const color = this.color();
-
       this.getTableData(color);
     });
   }
 
-  getTableColumnHeaders() {
-    const headers = [];
-
-    const sampleRow = this.dataStruct[0];
-
-    for (let i = 0; i < sampleRow.length; i++) {
-      const curCell = sampleRow[i];
-
-      headers.push(curCell.chroma);
-    }
-
-    this.tableHeaders = headers;
-  }
-
   selectColor(rowNum: number, columnNum: number) {
-    const targetColor = this.dataStruct[rowNum][columnNum];
-
+    const data = this.dataStruct();
+    const targetColor = data[rowNum][columnNum];
     this.selectedColor.emit(targetColor);
   }
 
@@ -70,18 +67,14 @@ export class PaletteTableComponent {
   }
 
   async getTableData(color: string) {
-    if (color) {
-      this.dataStruct = await this.cus.generateAllOklchVariants(
-        color,
-        this.lightSteps,
-        this.chromaSteps
-      );
-
-      this.getTableColumnHeaders();
-    } else {
+    if (!color) {
       if (this.debug()) {
         console.warn(`no color for palette table`);
       }
+      this.dataStruct.set([]);
+      return;
     }
+    const data = await this.cus.generateAllOklchVariants(color, this.lightSteps, this.chromaSteps);
+    this.dataStruct.set(data);
   }
 }
