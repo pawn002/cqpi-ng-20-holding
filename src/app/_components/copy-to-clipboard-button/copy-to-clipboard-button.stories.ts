@@ -30,3 +30,10 @@ export const SomethingToCopy: Story = {
     debug: true,
   },
 };
+
+export const NothingToCopy: Story = {
+  args: {
+    color: '',
+    debug: true,
+  },
+};
