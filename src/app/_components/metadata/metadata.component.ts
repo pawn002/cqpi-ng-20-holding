@@ -1,4 +1,4 @@
-import { Component, effect, inject, input } from '@angular/core';
+import { Component, effect, inject, input, signal, computed } from '@angular/core';
 import { ColorUtilService, ColorMetaObj } from '../../services/color-util.service';
 import { ColorMetricsService } from '../../services/color-metrics.service';
 
@@ -25,100 +25,84 @@ export class MetadataComponent {
   colorTwo = input<string>('');
   debug = input<boolean>(false);
 
-  cus = inject(ColorUtilService);
-  cms = inject(ColorMetricsService);
+  private readonly cus = inject(ColorUtilService);
+  private readonly cms = inject(ColorMetricsService);
 
-  differences: DifferencesDataObj = new DifferencesDataObj();
-
-  successes: SuccessesObj = {
-    text: null,
-    largeText: null,
-    objectMinDimension: NaN,
-  };
-
-  colorOneMeta: ColorMetaObj | null = null;
-
-  colorTwoMeta: ColorMetaObj | null = null;
-
-  constructor() {
-    effect(() => {
-      const colorOne = this.colorOne();
-      const colorTwo = this.colorTwo();
-
-      this.getColorMeta(colorOne, colorTwo);
-
-      this.getColorDifference(colorOne, colorTwo);
-
-      this.getSuccesses(colorOne, colorTwo);
-    });
-  }
-
-  getColorMeta(colOne: string | null, colTwo: string | null) {
-    if (colOne && colTwo) {
-      if (this.cus.getColorMeta(colOne)) {
-        this.colorOneMeta = this.cus.getColorMeta(colOne);
-
-        this.colorTwoMeta = this.cus.getColorMeta(colTwo);
-      }
-    } else {
+  readonly colorOneMeta = computed<ColorMetaObj | null>(() => {
+    const colOne = this.colorOne();
+    if (!colOne) {
       if (this.debug()) {
-        console.warn(`failed to get color meta`);
+        console.warn('failed to get colorOne meta');
       }
+      return null;
     }
-  }
+    return this.cus.getColorMeta(colOne) ?? null;
+  });
 
-  getColorDifference(colOne: string | null, colTwo: string | null) {
-    if (colOne && colTwo) {
-      const deltaE = this.cus.calcDeltaE(colOne, colTwo);
-      const wcag2New = this.cms.getContrast(colOne, colTwo, 'bpca');
-      const wcag2Old = this.cus.calcWcag2(colOne, colTwo);
-      const apca = this.cms.getContrast(colOne, colTwo, 'apca');
-
-      this.differences.deltaE = !deltaE ? NaN : deltaE;
-
-      this.differences.wcag2New = !wcag2New ? NaN : wcag2New;
-
-      this.differences.wcag2Old = !wcag2Old ? NaN : wcag2Old;
-
-      this.differences.apca = !apca ? NaN : apca;
-    } else {
+  readonly colorTwoMeta = computed<ColorMetaObj | null>(() => {
+    const colTwo = this.colorTwo();
+    if (!colTwo) {
       if (this.debug()) {
-        console.warn(`failed to get color differences`);
+        console.warn('failed to get colorTwo meta');
       }
+      return null;
     }
-  }
+    return this.cus.getColorMeta(colTwo) ?? null;
+  });
 
-  getSuccesses(colOne: string | null, colTwo: string | null) {
-    if (colOne && colTwo) {
-      const wcagNew = this.cms.getContrast(colOne, colTwo, 'bpca');
-
-      const apcaScore = this.cms.getContrast(colOne, colTwo, 'apca');
-
-      if (wcagNew && apcaScore) {
-        if (wcagNew >= 0 && Math.abs(apcaScore) >= 0) {
-          this.successes.text = wcagNew >= 4.5 ? 'pass' : 'fail';
-
-          this.successes.largeText = wcagNew >= 3 ? 'pass' : 'fail';
-
-          const minDimension = this.cus.getMinObjectDimension(apcaScore);
-
-          this.successes.objectMinDimension = Number.isNaN(minDimension)
-            ? 'invisible'
-            : minDimension;
-        } else {
-          if (this.debug()) {
-            console.warn(`something wonky with calculating scores`);
-          }
-        }
-      } else {
-        if (this.debug()) {
-          console.warn(`trouble getting scores`);
-        }
+  readonly differences = computed<DifferencesDataObj>(() => {
+    const colOne = this.colorOne();
+    const colTwo = this.colorTwo();
+    const result = new DifferencesDataObj();
+    if (!colOne || !colTwo) {
+      if (this.debug()) {
+        console.warn('failed to get color differences');
       }
-    } else {
+      return result;
+    }
+    const deltaE = this.cus.calcDeltaE(colOne, colTwo);
+    const wcag2New = this.cms.getContrast(colOne, colTwo, 'bpca');
+    const wcag2Old = this.cus.calcWcag2(colOne, colTwo);
+    const apca = this.cms.getContrast(colOne, colTwo, 'apca');
+    result.deltaE = !deltaE ? NaN : deltaE;
+    result.wcag2New = !wcag2New ? NaN : wcag2New;
+    result.wcag2Old = !wcag2Old ? NaN : wcag2Old;
+    result.apca = !apca ? NaN : apca;
+    return result;
+  });
+
+  readonly successes = computed<SuccessesObj>(() => {
+    const colOne = this.colorOne();
+    const colTwo = this.colorTwo();
+    const result: SuccessesObj = {
+      text: null,
+      largeText: null,
+      objectMinDimension: NaN,
+    };
+    if (!colOne || !colTwo) {
       if (this.debug()) {
         console.warn('no colors for successes');
       }
+      return result;
     }
-  }
+    const wcagNew = this.cms.getContrast(colOne, colTwo, 'bpca');
+    const apcaScore = this.cms.getContrast(colOne, colTwo, 'apca');
+    if (!wcagNew || !apcaScore) {
+      if (this.debug()) {
+        console.warn('trouble getting scores');
+      }
+      return result;
+    }
+    if (wcagNew < 0 || Math.abs(apcaScore) < 0) {
+      if (this.debug()) {
+        console.warn('something wonky with calculating scores');
+      }
+      return result;
+    }
+    result.text = wcagNew >= 4.5 ? 'pass' : 'fail';
+    result.largeText = wcagNew >= 3 ? 'pass' : 'fail';
+    const minDimension = this.cus.getMinObjectDimension(apcaScore);
+    result.objectMinDimension = Number.isNaN(minDimension) ? 'invisible' : minDimension;
+    return result;
+  });
 }

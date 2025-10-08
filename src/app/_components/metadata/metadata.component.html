@@ -14,17 +14,17 @@
       <tbody>
         <tr>
           <td>Text</td>
-          <td>{{ successes.text }}</td>
+          <td>{{ successes().text }}</td>
         </tr>
         <tr>
           <td>Large Text</td>
-          <td>{{ successes.largeText }}</td>
+          <td>{{ successes().largeText }}</td>
         </tr>
         <tr>
           <td>
             <cite><a href="#notes-object">Object</a></cite>
           </td>
-          <td>{{ successes.objectMinDimension }}</td>
+          <td>{{ successes().objectMinDimension }}</td>
         </tr>
       </tbody>
     </table>
@@ -45,29 +45,25 @@
       <tbody>
         <tr>
           <td>Delta E</td>
-          <td>{{ differences.deltaE }}</td>
+          <td>{{ differences().deltaE }}</td>
         </tr>
         <tr>
           <td>
-            <cite
-              ><a href="#notes-perceptual-contrast">
-                Perceptual contrast</a
-              ></cite
-            >
+            <cite><a href="#notes-perceptual-contrast"> Perceptual contrast</a></cite>
           </td>
-          <td>{{ differences.apca }}</td>
+          <td>{{ differences().apca }}</td>
         </tr>
         <tr>
           <td>
             <cite><a href="#notes-wcag2-compat"> WCAG 2 compatible</a></cite>
           </td>
-          <td>{{ differences.wcag2New }}</td>
+          <td>{{ differences().wcag2New }}</td>
         </tr>
         <tr>
           <td>
             <cite><a href="#notes-wcag2">WCAG 2</a></cite>
           </td>
-          <td>{{ differences.wcag2Old }}</td>
+          <td>{{ differences().wcag2Old }}</td>
         </tr>
       </tbody>
     </table>
@@ -88,19 +84,19 @@
       <tbody>
         <tr>
           <td>Saturation</td>
-          <td>{{ colorOneMeta?.saturation }}</td>
+          <td>{{ colorOneMeta()?.saturation }}</td>
         </tr>
         <tr>
           <td>Lightness</td>
-          <td>{{ colorOneMeta?.lightness }}</td>
+          <td>{{ colorOneMeta()?.lightness }}</td>
         </tr>
         <tr>
           <td>Chroma</td>
-          <td>{{ colorOneMeta?.chroma }}</td>
+          <td>{{ colorOneMeta()?.chroma }}</td>
         </tr>
         <tr>
           <td>Hue</td>
-          <td>{{ colorOneMeta?.hue }}</td>
+          <td>{{ colorOneMeta()?.hue }}</td>
         </tr>
       </tbody>
     </table>
@@ -121,19 +117,19 @@
       <tbody>
         <tr>
           <td>Saturation</td>
-          <td>{{ colorTwoMeta?.saturation }}</td>
+          <td>{{ colorTwoMeta()?.saturation }}</td>
         </tr>
         <tr>
           <td>Lightness</td>
-          <td>{{ colorTwoMeta?.lightness }}</td>
+          <td>{{ colorTwoMeta()?.lightness }}</td>
         </tr>
         <tr>
           <td>Chroma</td>
-          <td>{{ colorTwoMeta?.chroma }}</td>
+          <td>{{ colorTwoMeta()?.chroma }}</td>
         </tr>
         <tr>
           <td>Hue</td>
-          <td>{{ colorTwoMeta?.hue }}</td>
+          <td>{{ colorTwoMeta()?.hue }}</td>
         </tr>
       </tbody>
     </table>
