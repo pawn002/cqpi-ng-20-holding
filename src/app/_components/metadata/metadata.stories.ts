@@ -24,7 +24,7 @@ export const Typical: Story = {
   args: {},
 };
 
-export const SomethingToCopy: Story = {
+export const Populated: Story = {
   args: {
     colorOne: 'red',
     colorTwo: 'white',

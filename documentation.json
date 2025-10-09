@@ -133,12 +133,12 @@
         },
         {
             "name": "ResetObject",
-            "id": "interface-ResetObject-dfabaacd58980ea0deb584e3c7be3535a3ed61041e31ff7ee6786f855b4c876d2d6bfc5a8a6120030201c5ad550722f9811eeddd6a097fff5494127081a1c2f4",
+            "id": "interface-ResetObject-d618fa4c1318279f8961e3123a73d8570342bd12ce31d9c72b0cf65df12dfb4fa36d858f1f29856b05deafac44cb673498ff0f88ffa0816eb87430a993c0e538",
             "file": "src/app/_components/color-slider/color-slider.component.ts",
             "deprecated": false,
             "deprecationMessage": "",
             "type": "interface",
-            "sourceCode": "import {\r\n  Component,\r\n  input,\r\n  Output,\r\n  EventEmitter,\r\n  inject,\r\n  effect,\r\n  output,\r\n  signal,\r\n  viewChild,\r\n} from '@angular/core';\r\nimport { CommonModule } from '@angular/common';\r\nimport { ColorUtilService } from '../../services/color-util.service';\r\n\r\nexport interface ResetObject {\r\n  reset: true;\r\n}\r\n\r\n@Component({\r\n  selector: 'app-color-slider',\r\n  templateUrl: './color-slider.component.html',\r\n  styleUrls: ['./color-slider.component.scss'],\r\n  imports: [CommonModule],\r\n  standalone: true,\r\n})\r\nexport class ColorSliderComponent {\r\n  cus = inject(ColorUtilService);\r\n\r\n  debug = input<boolean>(false);\r\n\r\n  slideContainer = viewChild<HTMLDivElement>('sliderContainer');\r\n\r\n  id = input<string | 'slider-0'>('slider-0');\r\n  name = input<string | 'color-slider'>('color-slider');\r\n  color = input<string>('');\r\n  constantChroma = input<boolean>(false);\r\n  showGradient = input<boolean>(false);\r\n  resetSlider = input<ResetObject | null>(null);\r\n\r\n  colorVariant = output<string | null>();\r\n  devColorVariant = signal<string>('');\r\n\r\n  slideMin = signal<number>(NaN);\r\n  slideMax = signal<number>(NaN);\r\n  slideInterval = signal<number>(NaN);\r\n  value = signal<number>(NaN);\r\n  initValue = signal<number>(NaN);\r\n\r\n  constructor() {\r\n    effect(() => {\r\n      const boundColor = this.color();\r\n      const showGradient = this.showGradient();\r\n      const resetSlider = this.resetSlider();\r\n      const debug = this.debug();\r\n\r\n      if (!this.slideContainer()) {\r\n        if (debug) {\r\n          console.warn(`no slide container view child yet.`);\r\n        }\r\n\r\n        return;\r\n      }\r\n\r\n      if (!boundColor) {\r\n        if (debug) {\r\n          console.error(`no color specified`);\r\n        }\r\n\r\n        return;\r\n      }\r\n\r\n      if (boundColor) {\r\n        this.getAndSetLightnessRange(boundColor, {\r\n          constantChroma: this.constantChroma(),\r\n        });\r\n      }\r\n\r\n      if (showGradient) {\r\n        this.gradient('on');\r\n      }\r\n\r\n      if (!showGradient) {\r\n        this.gradient('off');\r\n      }\r\n\r\n      if (resetSlider && this.initValue()) {\r\n        this.reset();\r\n      }\r\n    });\r\n  }\r\n\r\n  sendInitialLightVariant() {\r\n    const color = this.color();\r\n\r\n    // Good UX to just send the input color?\r\n    this.colorVariant.emit(color);\r\n\r\n    if (this.debug()) {\r\n      this.devColorVariant.set(color);\r\n    }\r\n  }\r\n\r\n  async getAndSetLightnessRange(color: string, options?: { constantChroma: boolean }) {\r\n    const rangeObject = await this.cus.getMinMaxLight(color);\r\n\r\n    if (!rangeObject) {\r\n      console.error(`no range object for color ${color}`);\r\n\r\n      return;\r\n    }\r\n\r\n    this.sendInitialLightVariant();\r\n\r\n    this.slideMin.set(0);\r\n    this.slideMax.set(1);\r\n\r\n    if (options?.constantChroma) {\r\n      this.slideMin.set(rangeObject.lightMin);\r\n\r\n      this.slideMax.set(rangeObject.lightMax);\r\n    }\r\n\r\n    this.slideInterval.set((this.slideMax() - this.slideMin()) / 80);\r\n\r\n    const lightnessIndex = 0;\r\n    const initialSlideValue = rangeObject.originalCoords[lightnessIndex];\r\n\r\n    this.initValue.set(initialSlideValue);\r\n\r\n    this.value.set(initialSlideValue);\r\n\r\n    this.redefineGradientStops(this.slideMin(), this.slideMax());\r\n  }\r\n\r\n  handleSliding(event: Event) {\r\n    const inputElem = event.target as HTMLInputElement;\r\n\r\n    if (inputElem) {\r\n      const lightValue = parseFloat(inputElem.value);\r\n\r\n      const boundColor = this.color();\r\n\r\n      if (boundColor) {\r\n        const lightnessVariant = this.cus.createSrgbColor(boundColor, lightValue);\r\n\r\n        if (this.debug()) {\r\n          console.log(`slide modding ${this.color} to ${lightnessVariant}`);\r\n\r\n          this.devColorVariant.set(!lightnessVariant ? '' : lightnessVariant);\r\n        }\r\n\r\n        this.colorVariant.emit(lightnessVariant);\r\n      } else {\r\n        console.error(`no color specified`);\r\n      }\r\n    }\r\n  }\r\n\r\n  reset() {\r\n    const compId = this.id();\r\n\r\n    // TODO: Isn't there an angular way to do this?\r\n    const element = document.getElementById(compId) as HTMLInputElement;\r\n\r\n    if (this.initValue) {\r\n      element.value = this.initValue.toString();\r\n    } else {\r\n      console.error(`trouble resetting slider, initValue is ${this.initValue}`);\r\n    }\r\n  }\r\n\r\n  gradient(val: 'on' | 'off') {\r\n    const compId = this.id();\r\n\r\n    // TODO: Anguar way to do this?\r\n    const targetElem = document.getElementById(`cc-${compId}`) as HTMLElement;\r\n\r\n    // const targetElem = this.slideContainer();\r\n\r\n    if (!targetElem) {\r\n      if (this.debug()) {\r\n        console.warn(`no elem to assign gradient to.`);\r\n      }\r\n\r\n      return;\r\n    }\r\n\r\n    if (val === 'on') {\r\n      targetElem.style.background = 'var(--gradient-background)';\r\n    }\r\n\r\n    if (val === 'off') {\r\n      targetElem.style.background = 'var(--default-background)';\r\n    }\r\n  }\r\n\r\n  redefineVariable(element: HTMLElement, variableName: string, newValue: string) {\r\n    element.style.setProperty(variableName, newValue);\r\n  }\r\n\r\n  redefineGradientStops(lightMin: number, lightMax: number) {\r\n    const compId = this.id();\r\n\r\n    if (this.color()) {\r\n      const targetElement = document.getElementById(`cc-${compId}`) as HTMLElement;\r\n\r\n      const stops = [\r\n        '--grad-stop-0',\r\n        '--grad-stop-1',\r\n        '--grad-stop-2',\r\n        '--grad-stop-3',\r\n        '--grad-stop-4',\r\n        '--grad-stop-5',\r\n      ];\r\n\r\n      // get new stop values\r\n      const stopInterval = (lightMax - lightMin) / (stops.length - 1);\r\n      const stopVals = [];\r\n\r\n      for (let i = 0; i < stops.length; i++) {\r\n        const targetLight = stopInterval * i + lightMin;\r\n        targetLight;\r\n\r\n        const boundColor = this.color();\r\n\r\n        if (!boundColor) {\r\n          console.error(`no color bound to redefine gradient stops with. . .`);\r\n\r\n          break;\r\n        } else {\r\n          const stopColor = this.cus.createSrgbColor(boundColor, targetLight);\r\n\r\n          stopVals.push(stopColor);\r\n        }\r\n      }\r\n\r\n      // assign new stop values\r\n\r\n      for (let i = 0; i < stops.length; i++) {\r\n        const targetStop = stops[i];\r\n        const targetStopVal = stopVals[i];\r\n\r\n        if (targetStopVal) {\r\n          this.redefineVariable(targetElement, targetStop, targetStopVal);\r\n        } else {\r\n          console.log(`no new val to assign`);\r\n        }\r\n      }\r\n    } else {\r\n      console.log(`no color specified`);\r\n    }\r\n  }\r\n}\r\n",
+            "sourceCode": "import {\r\n  Component,\r\n  input,\r\n  Output,\r\n  EventEmitter,\r\n  inject,\r\n  effect,\r\n  output,\r\n  signal,\r\n  viewChild,\r\n  ElementRef,\r\n} from '@angular/core';\r\nimport { CommonModule } from '@angular/common';\r\nimport { ColorUtilService } from '../../services/color-util.service';\r\n\r\nexport interface ResetObject {\r\n  reset: true;\r\n}\r\n\r\n@Component({\r\n  selector: 'app-color-slider',\r\n  templateUrl: './color-slider.component.html',\r\n  styleUrls: ['./color-slider.component.scss'],\r\n  imports: [CommonModule],\r\n  standalone: true,\r\n})\r\nexport class ColorSliderComponent {\r\n  cus = inject(ColorUtilService);\r\n\r\n  debug = input<boolean>(false);\r\n\r\n  slideContainer = viewChild<ElementRef>('sliderContainer');\r\n\r\n  id = input<string | 'slider-0'>('slider-0');\r\n  name = input<string | 'color-slider'>('color-slider');\r\n  color = input<string>('');\r\n  constantChroma = input<boolean>(false);\r\n  showGradient = input<boolean>(false);\r\n  resetSlider = input<ResetObject | null>(null);\r\n\r\n  colorVariant = output<string | null>();\r\n\r\n  devColorVariant = signal<string>('');\r\n  slideMin = signal<number>(NaN);\r\n  slideMax = signal<number>(NaN);\r\n  slideInterval = signal<number>(NaN);\r\n  value = signal<number>(NaN);\r\n  initValue = signal<number>(NaN);\r\n\r\n  constructor() {\r\n    effect(() => {\r\n      const boundColor = this.color();\r\n      const showGradient = this.showGradient();\r\n      const resetSlider = this.resetSlider();\r\n      const debug = this.debug();\r\n\r\n      if (!this.slideContainer()) {\r\n        if (debug) {\r\n          console.warn(`no slide container view child yet.`);\r\n        }\r\n\r\n        return;\r\n      }\r\n\r\n      if (!boundColor) {\r\n        if (debug) {\r\n          console.error(`no color specified`);\r\n        }\r\n\r\n        return;\r\n      }\r\n\r\n      if (boundColor) {\r\n        this.getAndSetLightnessRange(boundColor, {\r\n          constantChroma: this.constantChroma(),\r\n        });\r\n      }\r\n\r\n      if (showGradient) {\r\n        this.gradient('on');\r\n      }\r\n\r\n      if (!showGradient) {\r\n        this.gradient('off');\r\n      }\r\n\r\n      if (resetSlider && this.initValue()) {\r\n        this.reset();\r\n      }\r\n    });\r\n  }\r\n\r\n  sendInitialLightVariant() {\r\n    const color = this.color();\r\n\r\n    // Good UX to just send the input color?\r\n    this.colorVariant.emit(color);\r\n\r\n    if (this.debug()) {\r\n      this.devColorVariant.set(color);\r\n    }\r\n  }\r\n\r\n  async getAndSetLightnessRange(color: string, options?: { constantChroma: boolean }) {\r\n    const rangeObject = await this.cus.getMinMaxLight(color);\r\n\r\n    if (!rangeObject) {\r\n      console.error(`no range object for color ${color}`);\r\n\r\n      return;\r\n    }\r\n\r\n    this.sendInitialLightVariant();\r\n\r\n    this.slideMin.set(0);\r\n    this.slideMax.set(1);\r\n\r\n    if (options?.constantChroma) {\r\n      this.slideMin.set(rangeObject.lightMin);\r\n\r\n      this.slideMax.set(rangeObject.lightMax);\r\n    }\r\n\r\n    this.slideInterval.set((this.slideMax() - this.slideMin()) / 80);\r\n\r\n    const lightnessIndex = 0;\r\n    const initialSlideValue = rangeObject.originalCoords[lightnessIndex];\r\n\r\n    this.initValue.set(initialSlideValue);\r\n\r\n    this.value.set(initialSlideValue);\r\n\r\n    this.redefineGradientStops(this.slideMin(), this.slideMax());\r\n  }\r\n\r\n  handleSliding(event: Event) {\r\n    const inputElem = event.target as HTMLInputElement;\r\n\r\n    if (inputElem) {\r\n      const lightValue = parseFloat(inputElem.value);\r\n\r\n      const boundColor = this.color();\r\n\r\n      if (boundColor) {\r\n        const lightnessVariant = this.cus.createSrgbColor(boundColor, lightValue);\r\n\r\n        if (this.debug()) {\r\n          console.log(`slide modding ${this.color} to ${lightnessVariant}`);\r\n\r\n          this.devColorVariant.set(!lightnessVariant ? '' : lightnessVariant);\r\n        }\r\n\r\n        this.colorVariant.emit(lightnessVariant);\r\n      } else {\r\n        console.error(`no color specified`);\r\n      }\r\n    }\r\n  }\r\n\r\n  reset() {\r\n    const compId = this.id();\r\n\r\n    // TODO: Isn't there an angular way to do this?\r\n    const element = document.getElementById(compId) as HTMLInputElement;\r\n\r\n    if (this.initValue) {\r\n      element.value = this.initValue.toString();\r\n    } else {\r\n      console.error(`trouble resetting slider, initValue is ${this.initValue}`);\r\n    }\r\n  }\r\n\r\n  gradient(val: 'on' | 'off') {\r\n    const targetElem = this.slideContainer()?.nativeElement as HTMLElement;\r\n\r\n    if (!targetElem) {\r\n      if (this.debug()) {\r\n        console.warn(`no elem to assign gradient to.`);\r\n      }\r\n\r\n      return;\r\n    }\r\n\r\n    if (val === 'on') {\r\n      targetElem.style.background = 'var(--gradient-background)';\r\n    }\r\n\r\n    if (val === 'off') {\r\n      targetElem.style.background = 'var(--default-background)';\r\n    }\r\n  }\r\n\r\n  redefineVariable(element: HTMLElement, variableName: string, newValue: string) {\r\n    element.style.setProperty(variableName, newValue);\r\n  }\r\n\r\n  redefineGradientStops(lightMin: number, lightMax: number) {\r\n    const compId = this.id();\r\n\r\n    if (this.color()) {\r\n      const targetElement = document.getElementById(`cc-${compId}`) as HTMLElement;\r\n\r\n      const stops = [\r\n        '--grad-stop-0',\r\n        '--grad-stop-1',\r\n        '--grad-stop-2',\r\n        '--grad-stop-3',\r\n        '--grad-stop-4',\r\n        '--grad-stop-5',\r\n      ];\r\n\r\n      // get new stop values\r\n      const stopInterval = (lightMax - lightMin) / (stops.length - 1);\r\n      const stopVals = [];\r\n\r\n      for (let i = 0; i < stops.length; i++) {\r\n        const targetLight = stopInterval * i + lightMin;\r\n        targetLight;\r\n\r\n        const boundColor = this.color();\r\n\r\n        if (!boundColor) {\r\n          console.error(`no color bound to redefine gradient stops with. . .`);\r\n\r\n          break;\r\n        } else {\r\n          const stopColor = this.cus.createSrgbColor(boundColor, targetLight);\r\n\r\n          stopVals.push(stopColor);\r\n        }\r\n      }\r\n\r\n      // assign new stop values\r\n\r\n      for (let i = 0; i < stops.length; i++) {\r\n        const targetStop = stops[i];\r\n        const targetStopVal = stopVals[i];\r\n\r\n        if (targetStopVal) {\r\n          this.redefineVariable(targetElement, targetStop, targetStopVal);\r\n        } else {\r\n          console.log(`no new val to assign`);\r\n        }\r\n      }\r\n    } else {\r\n      console.log(`no color specified`);\r\n    }\r\n  }\r\n}\r\n",
             "properties": [
                 {
                     "name": "reset",
@@ -148,7 +148,7 @@
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 16
+                    "line": 17
                 }
             ],
             "indexSignatures": [],
@@ -1388,12 +1388,12 @@
         },
         {
             "name": "CopyToClipboardEvent",
-            "id": "class-CopyToClipboardEvent-04ee7532967832742025521d161223b908dea8fa8be928c31f59a347e7d20395438bbd17dbe634c3fd194e951dd240bf56d243dbb84ebd8e65dc6c4ab938fc7d",
+            "id": "class-CopyToClipboardEvent-1b8f0a48b6b32734d574345a5e8cfdc6e76f876a93bb2eb5c77ff7c9f579bdf1318ff29ff69dc496a8da5532f3e5b14e79d35508ef1c23e9cfa6edea60f78b47",
             "file": "src/app/_components/copy-to-clipboard-button/copy-to-clipboard-button.component.ts",
             "deprecated": false,
             "deprecationMessage": "",
             "type": "class",
-            "sourceCode": "import { Component, Output, EventEmitter, input } from '@angular/core';\r\n\r\nexport class CopyToClipboardEvent {\r\n  copied: boolean = false;\r\n  color: string = '';\r\n}\r\n\r\n@Component({\r\n  selector: 'app-copy-to-clipboard-button',\r\n  templateUrl: './copy-to-clipboard-button.component.html',\r\n  styleUrls: ['./copy-to-clipboard-button.component.scss'],\r\n  standalone: true,\r\n})\r\nexport class CopyToClipboardButtonComponent {\r\n  color = input<string>('');\r\n  debug = input<boolean>(true);\r\n\r\n  @Output() copyEvent = new EventEmitter<CopyToClipboardEvent>();\r\n\r\n  async copyToClipboard(): Promise<void> {\r\n    const color = this.color();\r\n\r\n    if (color) {\r\n      const colorSansHex = color.replace('#', '');\r\n\r\n      try {\r\n        await navigator.clipboard.writeText(colorSansHex);\r\n\r\n        this.copyEvent.emit({\r\n          copied: true,\r\n          color: colorSansHex,\r\n        });\r\n\r\n        if (this.debug()) {\r\n          console.log(color, 'copied to clipboard');\r\n        }\r\n      } catch (err) {\r\n        this.copyEvent.emit({\r\n          copied: false,\r\n          color: colorSansHex,\r\n        });\r\n\r\n        console.error('Failed to copy text: ', err);\r\n      }\r\n    } else {\r\n      console.error('nothing to copy');\r\n    }\r\n  }\r\n}\r\n",
+            "sourceCode": "import { Component, Output, EventEmitter, input, output } from '@angular/core';\r\n\r\nexport class CopyToClipboardEvent {\r\n  copied: boolean = false;\r\n  color: string = '';\r\n}\r\n\r\n@Component({\r\n  selector: 'app-copy-to-clipboard-button',\r\n  templateUrl: './copy-to-clipboard-button.component.html',\r\n  styleUrls: ['./copy-to-clipboard-button.component.scss'],\r\n  standalone: true,\r\n})\r\nexport class CopyToClipboardButtonComponent {\r\n  color = input<string>('');\r\n  debug = input<boolean>(true);\r\n\r\n  copyEvent = output<CopyToClipboardEvent>();\r\n\r\n  async copyToClipboard(): Promise<void> {\r\n    const color = this.color();\r\n\r\n    if (!color) {\r\n      if (this.debug()) {\r\n        console.warn('no color provided to copy');\r\n      }\r\n\r\n      return;\r\n    }\r\n\r\n    const colorSansHex = color.replace('#', '');\r\n\r\n    try {\r\n      await navigator.clipboard.writeText(colorSansHex);\r\n\r\n      this.copyEvent.emit({\r\n        copied: true,\r\n        color: colorSansHex,\r\n      });\r\n\r\n      if (this.debug()) {\r\n        console.log(color, 'copied to clipboard');\r\n      }\r\n    } catch (err) {\r\n      this.copyEvent.emit({\r\n        copied: false,\r\n        color: colorSansHex,\r\n      });\r\n\r\n      console.error('Failed to copy text: ', err);\r\n    }\r\n  }\r\n}\r\n",
             "inputsClass": [],
             "outputsClass": [],
             "properties": [
@@ -1428,12 +1428,12 @@
         },
         {
             "name": "DifferencesDataObj",
-            "id": "class-DifferencesDataObj-cc15cf4cac05281e32e26d00f8d7592be5eeb4a6c2ffdf3b8bae1ebcb6798ee03a6aae5ce70ef87d82e4b5accd2027142406e803fa528ca54a46bf854d98a4be",
+            "id": "class-DifferencesDataObj-3889e5a50165df2e8062d1e3b7b565480e69be76f15ffde16aed2030f3092c772ed38fddb0dd43230633b15661d4bae4644711d29877262bc9969e4cc1f5b579",
             "file": "src/app/_components/metadata/metadata.component.ts",
             "deprecated": false,
             "deprecationMessage": "",
             "type": "class",
-            "sourceCode": "import { Component, effect, inject, input } from '@angular/core';\r\nimport { ColorUtilService, ColorMetaObj } from '../../services/color-util.service';\r\nimport { ColorMetricsService } from '../../services/color-metrics.service';\r\n\r\nexport class DifferencesDataObj {\r\n  deltaE: number = NaN;\r\n  wcag2Old: number = NaN;\r\n  wcag2New: number = NaN;\r\n  apca: number = NaN;\r\n}\r\nexport class SuccessesObj {\r\n  text: 'pass' | 'fail' | null = null;\r\n  largeText: 'pass' | 'fail' | null = null;\r\n  objectMinDimension: number | string = NaN;\r\n}\r\n\r\n@Component({\r\n  selector: 'app-metadata',\r\n  templateUrl: './metadata.component.html',\r\n  styleUrls: ['./metadata.component.scss'],\r\n  standalone: true,\r\n})\r\nexport class MetadataComponent {\r\n  colorOne = input<string>('');\r\n  colorTwo = input<string>('');\r\n  debug = input<boolean>(false);\r\n\r\n  cus = inject(ColorUtilService);\r\n  cms = inject(ColorMetricsService);\r\n\r\n  differences: DifferencesDataObj = new DifferencesDataObj();\r\n\r\n  successes: SuccessesObj = {\r\n    text: null,\r\n    largeText: null,\r\n    objectMinDimension: NaN,\r\n  };\r\n\r\n  colorOneMeta: ColorMetaObj | null = null;\r\n\r\n  colorTwoMeta: ColorMetaObj | null = null;\r\n\r\n  constructor() {\r\n    effect(() => {\r\n      const colorOne = this.colorOne();\r\n      const colorTwo = this.colorTwo();\r\n\r\n      this.getColorMeta(colorOne, colorTwo);\r\n\r\n      this.getColorDifference(colorOne, colorTwo);\r\n\r\n      this.getSuccesses(colorOne, colorTwo);\r\n    });\r\n  }\r\n\r\n  getColorMeta(colOne: string | null, colTwo: string | null) {\r\n    if (colOne && colTwo) {\r\n      if (this.cus.getColorMeta(colOne)) {\r\n        this.colorOneMeta = this.cus.getColorMeta(colOne);\r\n\r\n        this.colorTwoMeta = this.cus.getColorMeta(colTwo);\r\n      }\r\n    } else {\r\n      if (this.debug()) {\r\n        console.warn(`failed to get color meta`);\r\n      }\r\n    }\r\n  }\r\n\r\n  getColorDifference(colOne: string | null, colTwo: string | null) {\r\n    if (colOne && colTwo) {\r\n      const deltaE = this.cus.calcDeltaE(colOne, colTwo);\r\n      const wcag2New = this.cms.getContrast(colOne, colTwo, 'bpca');\r\n      const wcag2Old = this.cus.calcWcag2(colOne, colTwo);\r\n      const apca = this.cms.getContrast(colOne, colTwo, 'apca');\r\n\r\n      this.differences.deltaE = !deltaE ? NaN : deltaE;\r\n\r\n      this.differences.wcag2New = !wcag2New ? NaN : wcag2New;\r\n\r\n      this.differences.wcag2Old = !wcag2Old ? NaN : wcag2Old;\r\n\r\n      this.differences.apca = !apca ? NaN : apca;\r\n    } else {\r\n      if (this.debug()) {\r\n        console.warn(`failed to get color differences`);\r\n      }\r\n    }\r\n  }\r\n\r\n  getSuccesses(colOne: string | null, colTwo: string | null) {\r\n    if (colOne && colTwo) {\r\n      const wcagNew = this.cms.getContrast(colOne, colTwo, 'bpca');\r\n\r\n      const apcaScore = this.cms.getContrast(colOne, colTwo, 'apca');\r\n\r\n      if (wcagNew && apcaScore) {\r\n        if (wcagNew >= 0 && Math.abs(apcaScore) >= 0) {\r\n          this.successes.text = wcagNew >= 4.5 ? 'pass' : 'fail';\r\n\r\n          this.successes.largeText = wcagNew >= 3 ? 'pass' : 'fail';\r\n\r\n          const minDimension = this.cus.getMinObjectDimension(apcaScore);\r\n\r\n          this.successes.objectMinDimension = Number.isNaN(minDimension)\r\n            ? 'invisible'\r\n            : minDimension;\r\n        } else {\r\n          if (this.debug()) {\r\n            console.warn(`something wonky with calculating scores`);\r\n          }\r\n        }\r\n      } else {\r\n        if (this.debug()) {\r\n          console.warn(`trouble getting scores`);\r\n        }\r\n      }\r\n    } else {\r\n      if (this.debug()) {\r\n        console.warn('no colors for successes');\r\n      }\r\n    }\r\n  }\r\n}\r\n",
+            "sourceCode": "import { Component, effect, inject, input, signal, computed } from '@angular/core';\r\nimport { ColorUtilService, ColorMetaObj } from '../../services/color-util.service';\r\nimport { ColorMetricsService } from '../../services/color-metrics.service';\r\n\r\nexport class DifferencesDataObj {\r\n  deltaE: number = NaN;\r\n  wcag2Old: number = NaN;\r\n  wcag2New: number = NaN;\r\n  apca: number = NaN;\r\n}\r\nexport class SuccessesObj {\r\n  text: 'pass' | 'fail' | null = null;\r\n  largeText: 'pass' | 'fail' | null = null;\r\n  objectMinDimension: number | string = NaN;\r\n}\r\n\r\n@Component({\r\n  selector: 'app-metadata',\r\n  templateUrl: './metadata.component.html',\r\n  styleUrls: ['./metadata.component.scss'],\r\n  standalone: true,\r\n})\r\nexport class MetadataComponent {\r\n  colorOne = input<string>('');\r\n  colorTwo = input<string>('');\r\n  debug = input<boolean>(false);\r\n\r\n  private readonly cus = inject(ColorUtilService);\r\n  private readonly cms = inject(ColorMetricsService);\r\n\r\n  readonly colorOneMeta = computed<ColorMetaObj | null>(() => {\r\n    const colOne = this.colorOne();\r\n    if (!colOne) {\r\n      if (this.debug()) {\r\n        console.warn('failed to get colorOne meta');\r\n      }\r\n      return null;\r\n    }\r\n    return this.cus.getColorMeta(colOne) ?? null;\r\n  });\r\n\r\n  readonly colorTwoMeta = computed<ColorMetaObj | null>(() => {\r\n    const colTwo = this.colorTwo();\r\n    if (!colTwo) {\r\n      if (this.debug()) {\r\n        console.warn('failed to get colorTwo meta');\r\n      }\r\n      return null;\r\n    }\r\n    return this.cus.getColorMeta(colTwo) ?? null;\r\n  });\r\n\r\n  readonly differences = computed<DifferencesDataObj>(() => {\r\n    const colOne = this.colorOne();\r\n    const colTwo = this.colorTwo();\r\n    const result = new DifferencesDataObj();\r\n    if (!colOne || !colTwo) {\r\n      if (this.debug()) {\r\n        console.warn('failed to get color differences');\r\n      }\r\n      return result;\r\n    }\r\n    const deltaE = this.cus.calcDeltaE(colOne, colTwo);\r\n    const wcag2New = this.cms.getContrast(colOne, colTwo, 'bpca');\r\n    const wcag2Old = this.cus.calcWcag2(colOne, colTwo);\r\n    const apca = this.cms.getContrast(colOne, colTwo, 'apca');\r\n    result.deltaE = !deltaE ? NaN : deltaE;\r\n    result.wcag2New = !wcag2New ? NaN : wcag2New;\r\n    result.wcag2Old = !wcag2Old ? NaN : wcag2Old;\r\n    result.apca = !apca ? NaN : apca;\r\n    return result;\r\n  });\r\n\r\n  readonly successes = computed<SuccessesObj>(() => {\r\n    const colOne = this.colorOne();\r\n    const colTwo = this.colorTwo();\r\n    const result: SuccessesObj = {\r\n      text: null,\r\n      largeText: null,\r\n      objectMinDimension: NaN,\r\n    };\r\n    if (!colOne || !colTwo) {\r\n      if (this.debug()) {\r\n        console.warn('no colors for successes');\r\n      }\r\n      return result;\r\n    }\r\n    const wcagNew = this.cms.getContrast(colOne, colTwo, 'bpca');\r\n    const apcaScore = this.cms.getContrast(colOne, colTwo, 'apca');\r\n    if (!wcagNew || !apcaScore) {\r\n      if (this.debug()) {\r\n        console.warn('trouble getting scores');\r\n      }\r\n      return result;\r\n    }\r\n    if (wcagNew < 0 || Math.abs(apcaScore) < 0) {\r\n      if (this.debug()) {\r\n        console.warn('something wonky with calculating scores');\r\n      }\r\n      return result;\r\n    }\r\n    result.text = wcagNew >= 4.5 ? 'pass' : 'fail';\r\n    result.largeText = wcagNew >= 3 ? 'pass' : 'fail';\r\n    const minDimension = this.cus.getMinObjectDimension(apcaScore);\r\n    result.objectMinDimension = Number.isNaN(minDimension) ? 'invisible' : minDimension;\r\n    return result;\r\n  });\r\n}\r\n",
             "inputsClass": [],
             "outputsClass": [],
             "properties": [
@@ -1490,12 +1490,12 @@
         },
         {
             "name": "SuccessesObj",
-            "id": "class-SuccessesObj-cc15cf4cac05281e32e26d00f8d7592be5eeb4a6c2ffdf3b8bae1ebcb6798ee03a6aae5ce70ef87d82e4b5accd2027142406e803fa528ca54a46bf854d98a4be",
+            "id": "class-SuccessesObj-3889e5a50165df2e8062d1e3b7b565480e69be76f15ffde16aed2030f3092c772ed38fddb0dd43230633b15661d4bae4644711d29877262bc9969e4cc1f5b579",
             "file": "src/app/_components/metadata/metadata.component.ts",
             "deprecated": false,
             "deprecationMessage": "",
             "type": "class",
-            "sourceCode": "import { Component, effect, inject, input } from '@angular/core';\r\nimport { ColorUtilService, ColorMetaObj } from '../../services/color-util.service';\r\nimport { ColorMetricsService } from '../../services/color-metrics.service';\r\n\r\nexport class DifferencesDataObj {\r\n  deltaE: number = NaN;\r\n  wcag2Old: number = NaN;\r\n  wcag2New: number = NaN;\r\n  apca: number = NaN;\r\n}\r\nexport class SuccessesObj {\r\n  text: 'pass' | 'fail' | null = null;\r\n  largeText: 'pass' | 'fail' | null = null;\r\n  objectMinDimension: number | string = NaN;\r\n}\r\n\r\n@Component({\r\n  selector: 'app-metadata',\r\n  templateUrl: './metadata.component.html',\r\n  styleUrls: ['./metadata.component.scss'],\r\n  standalone: true,\r\n})\r\nexport class MetadataComponent {\r\n  colorOne = input<string>('');\r\n  colorTwo = input<string>('');\r\n  debug = input<boolean>(false);\r\n\r\n  cus = inject(ColorUtilService);\r\n  cms = inject(ColorMetricsService);\r\n\r\n  differences: DifferencesDataObj = new DifferencesDataObj();\r\n\r\n  successes: SuccessesObj = {\r\n    text: null,\r\n    largeText: null,\r\n    objectMinDimension: NaN,\r\n  };\r\n\r\n  colorOneMeta: ColorMetaObj | null = null;\r\n\r\n  colorTwoMeta: ColorMetaObj | null = null;\r\n\r\n  constructor() {\r\n    effect(() => {\r\n      const colorOne = this.colorOne();\r\n      const colorTwo = this.colorTwo();\r\n\r\n      this.getColorMeta(colorOne, colorTwo);\r\n\r\n      this.getColorDifference(colorOne, colorTwo);\r\n\r\n      this.getSuccesses(colorOne, colorTwo);\r\n    });\r\n  }\r\n\r\n  getColorMeta(colOne: string | null, colTwo: string | null) {\r\n    if (colOne && colTwo) {\r\n      if (this.cus.getColorMeta(colOne)) {\r\n        this.colorOneMeta = this.cus.getColorMeta(colOne);\r\n\r\n        this.colorTwoMeta = this.cus.getColorMeta(colTwo);\r\n      }\r\n    } else {\r\n      if (this.debug()) {\r\n        console.warn(`failed to get color meta`);\r\n      }\r\n    }\r\n  }\r\n\r\n  getColorDifference(colOne: string | null, colTwo: string | null) {\r\n    if (colOne && colTwo) {\r\n      const deltaE = this.cus.calcDeltaE(colOne, colTwo);\r\n      const wcag2New = this.cms.getContrast(colOne, colTwo, 'bpca');\r\n      const wcag2Old = this.cus.calcWcag2(colOne, colTwo);\r\n      const apca = this.cms.getContrast(colOne, colTwo, 'apca');\r\n\r\n      this.differences.deltaE = !deltaE ? NaN : deltaE;\r\n\r\n      this.differences.wcag2New = !wcag2New ? NaN : wcag2New;\r\n\r\n      this.differences.wcag2Old = !wcag2Old ? NaN : wcag2Old;\r\n\r\n      this.differences.apca = !apca ? NaN : apca;\r\n    } else {\r\n      if (this.debug()) {\r\n        console.warn(`failed to get color differences`);\r\n      }\r\n    }\r\n  }\r\n\r\n  getSuccesses(colOne: string | null, colTwo: string | null) {\r\n    if (colOne && colTwo) {\r\n      const wcagNew = this.cms.getContrast(colOne, colTwo, 'bpca');\r\n\r\n      const apcaScore = this.cms.getContrast(colOne, colTwo, 'apca');\r\n\r\n      if (wcagNew && apcaScore) {\r\n        if (wcagNew >= 0 && Math.abs(apcaScore) >= 0) {\r\n          this.successes.text = wcagNew >= 4.5 ? 'pass' : 'fail';\r\n\r\n          this.successes.largeText = wcagNew >= 3 ? 'pass' : 'fail';\r\n\r\n          const minDimension = this.cus.getMinObjectDimension(apcaScore);\r\n\r\n          this.successes.objectMinDimension = Number.isNaN(minDimension)\r\n            ? 'invisible'\r\n            : minDimension;\r\n        } else {\r\n          if (this.debug()) {\r\n            console.warn(`something wonky with calculating scores`);\r\n          }\r\n        }\r\n      } else {\r\n        if (this.debug()) {\r\n          console.warn(`trouble getting scores`);\r\n        }\r\n      }\r\n    } else {\r\n      if (this.debug()) {\r\n        console.warn('no colors for successes');\r\n      }\r\n    }\r\n  }\r\n}\r\n",
+            "sourceCode": "import { Component, effect, inject, input, signal, computed } from '@angular/core';\r\nimport { ColorUtilService, ColorMetaObj } from '../../services/color-util.service';\r\nimport { ColorMetricsService } from '../../services/color-metrics.service';\r\n\r\nexport class DifferencesDataObj {\r\n  deltaE: number = NaN;\r\n  wcag2Old: number = NaN;\r\n  wcag2New: number = NaN;\r\n  apca: number = NaN;\r\n}\r\nexport class SuccessesObj {\r\n  text: 'pass' | 'fail' | null = null;\r\n  largeText: 'pass' | 'fail' | null = null;\r\n  objectMinDimension: number | string = NaN;\r\n}\r\n\r\n@Component({\r\n  selector: 'app-metadata',\r\n  templateUrl: './metadata.component.html',\r\n  styleUrls: ['./metadata.component.scss'],\r\n  standalone: true,\r\n})\r\nexport class MetadataComponent {\r\n  colorOne = input<string>('');\r\n  colorTwo = input<string>('');\r\n  debug = input<boolean>(false);\r\n\r\n  private readonly cus = inject(ColorUtilService);\r\n  private readonly cms = inject(ColorMetricsService);\r\n\r\n  readonly colorOneMeta = computed<ColorMetaObj | null>(() => {\r\n    const colOne = this.colorOne();\r\n    if (!colOne) {\r\n      if (this.debug()) {\r\n        console.warn('failed to get colorOne meta');\r\n      }\r\n      return null;\r\n    }\r\n    return this.cus.getColorMeta(colOne) ?? null;\r\n  });\r\n\r\n  readonly colorTwoMeta = computed<ColorMetaObj | null>(() => {\r\n    const colTwo = this.colorTwo();\r\n    if (!colTwo) {\r\n      if (this.debug()) {\r\n        console.warn('failed to get colorTwo meta');\r\n      }\r\n      return null;\r\n    }\r\n    return this.cus.getColorMeta(colTwo) ?? null;\r\n  });\r\n\r\n  readonly differences = computed<DifferencesDataObj>(() => {\r\n    const colOne = this.colorOne();\r\n    const colTwo = this.colorTwo();\r\n    const result = new DifferencesDataObj();\r\n    if (!colOne || !colTwo) {\r\n      if (this.debug()) {\r\n        console.warn('failed to get color differences');\r\n      }\r\n      return result;\r\n    }\r\n    const deltaE = this.cus.calcDeltaE(colOne, colTwo);\r\n    const wcag2New = this.cms.getContrast(colOne, colTwo, 'bpca');\r\n    const wcag2Old = this.cus.calcWcag2(colOne, colTwo);\r\n    const apca = this.cms.getContrast(colOne, colTwo, 'apca');\r\n    result.deltaE = !deltaE ? NaN : deltaE;\r\n    result.wcag2New = !wcag2New ? NaN : wcag2New;\r\n    result.wcag2Old = !wcag2Old ? NaN : wcag2Old;\r\n    result.apca = !apca ? NaN : apca;\r\n    return result;\r\n  });\r\n\r\n  readonly successes = computed<SuccessesObj>(() => {\r\n    const colOne = this.colorOne();\r\n    const colTwo = this.colorTwo();\r\n    const result: SuccessesObj = {\r\n      text: null,\r\n      largeText: null,\r\n      objectMinDimension: NaN,\r\n    };\r\n    if (!colOne || !colTwo) {\r\n      if (this.debug()) {\r\n        console.warn('no colors for successes');\r\n      }\r\n      return result;\r\n    }\r\n    const wcagNew = this.cms.getContrast(colOne, colTwo, 'bpca');\r\n    const apcaScore = this.cms.getContrast(colOne, colTwo, 'apca');\r\n    if (!wcagNew || !apcaScore) {\r\n      if (this.debug()) {\r\n        console.warn('trouble getting scores');\r\n      }\r\n      return result;\r\n    }\r\n    if (wcagNew < 0 || Math.abs(apcaScore) < 0) {\r\n      if (this.debug()) {\r\n        console.warn('something wonky with calculating scores');\r\n      }\r\n      return result;\r\n    }\r\n    result.text = wcagNew >= 4.5 ? 'pass' : 'fail';\r\n    result.largeText = wcagNew >= 3 ? 'pass' : 'fail';\r\n    const minDimension = this.cus.getMinObjectDimension(apcaScore);\r\n    result.objectMinDimension = Number.isNaN(minDimension) ? 'invisible' : minDimension;\r\n    return result;\r\n  });\r\n}\r\n",
             "inputsClass": [],
             "outputsClass": [],
             "properties": [
@@ -1541,12 +1541,12 @@
         },
         {
             "name": "TableColorCell",
-            "id": "class-TableColorCell-2479b5e6db4f725d59db35a9abac76480357566bea9c7c3c2b270c1f12e808def277ad7279178f539758dab7f1efe1f8e603dbbd93f7af7d8d7fc86abc322ada",
+            "id": "class-TableColorCell-7328d72a5e3a1f614fb03d666b5296e76edf92b4173eae715740d9e877d196ca2440c5967afb9dcc821e9a45eb09ba786e435b9c53ae25681d9ad74a0dbc041c",
             "file": "src/app/_components/palette-table/palette-table.component.ts",
             "deprecated": false,
             "deprecationMessage": "",
             "type": "class",
-            "sourceCode": "import { Component, Output, EventEmitter, inject, input, effect } from '@angular/core';\r\nimport { ColorUtilService } from '../../services/color-util.service';\r\n\r\nexport class TableColorCell {\r\n  color: string = '';\r\n  lightness: number = NaN;\r\n  chroma: number = NaN;\r\n  hue: number = NaN;\r\n  deltaE: number = NaN;\r\n  deltaLightness: number = NaN;\r\n  deltaChroma: number = NaN;\r\n}\r\n\r\nexport type TableRow = Array<TableColorCell>;\r\n\r\nexport type TableData = Array<TableRow>;\r\n\r\n@Component({\r\n  selector: 'app-palette-table',\r\n  templateUrl: './palette-table.component.html',\r\n  styleUrls: ['./palette-table.component.scss'],\r\n  standalone: true,\r\n})\r\nexport class PaletteTableComponent {\r\n  color = input<string>('');\r\n  debug = input<boolean>(false);\r\n\r\n  @Output() selectedColor = new EventEmitter<TableColorCell>();\r\n\r\n  cus = inject(ColorUtilService);\r\n\r\n  lightSteps = 5;\r\n  chromaSteps = 14;\r\n\r\n  tableHeaders: Array<number> = [];\r\n\r\n  // An array of arrays where each array is a 'row' of data, and objects are cells of data.\r\n  dataStruct: TableData = [];\r\n\r\n  constructor() {\r\n    effect(() => {\r\n      const color = this.color();\r\n\r\n      this.getTableData(color);\r\n    });\r\n  }\r\n\r\n  getTableColumnHeaders() {\r\n    const headers = [];\r\n\r\n    const sampleRow = this.dataStruct[0];\r\n\r\n    for (let i = 0; i < sampleRow.length; i++) {\r\n      const curCell = sampleRow[i];\r\n\r\n      headers.push(curCell.chroma);\r\n    }\r\n\r\n    this.tableHeaders = headers;\r\n  }\r\n\r\n  selectColor(rowNum: number, columnNum: number) {\r\n    const targetColor = this.dataStruct[rowNum][columnNum];\r\n\r\n    this.selectedColor.emit(targetColor);\r\n  }\r\n\r\n  getTextColor(bkgdColor: string) {\r\n    return (this.cus.calcWcag2('white', bkgdColor) as number) >= 7 ? 'white' : 'black';\r\n  }\r\n\r\n  async getTableData(color: string) {\r\n    if (color) {\r\n      this.dataStruct = await this.cus.generateAllOklchVariants(\r\n        color,\r\n        this.lightSteps,\r\n        this.chromaSteps\r\n      );\r\n\r\n      this.getTableColumnHeaders();\r\n    } else {\r\n      if (this.debug()) {\r\n        console.warn(`no color for palette table`);\r\n      }\r\n    }\r\n  }\r\n}\r\n",
+            "sourceCode": "import {\r\n  Component,\r\n  Output,\r\n  EventEmitter,\r\n  inject,\r\n  input,\r\n  signal,\r\n  computed,\r\n  effect,\r\n} from '@angular/core';\r\nimport { ColorUtilService } from '../../services/color-util.service';\r\n\r\nexport class TableColorCell {\r\n  color: string = '';\r\n  lightness: number = NaN;\r\n  chroma: number = NaN;\r\n  hue: number = NaN;\r\n  deltaE: number = NaN;\r\n  deltaLightness: number = NaN;\r\n  deltaChroma: number = NaN;\r\n}\r\n\r\nexport type TableRow = Array<TableColorCell>;\r\n\r\nexport type TableData = Array<TableRow>;\r\n\r\n@Component({\r\n  selector: 'app-palette-table',\r\n  templateUrl: './palette-table.component.html',\r\n  styleUrls: ['./palette-table.component.scss'],\r\n  standalone: true,\r\n})\r\nexport class PaletteTableComponent {\r\n  color = input<string>('');\r\n  debug = input<boolean>(false);\r\n\r\n  @Output() selectedColor = new EventEmitter<TableColorCell>();\r\n\r\n  readonly cus = inject(ColorUtilService);\r\n\r\n  readonly lightSteps = 5;\r\n  readonly chromaSteps = 14;\r\n\r\n  // Signals for table data and headers\r\n  readonly dataStruct = signal<TableData>([]);\r\n  readonly tableHeaders = computed<number[]>(() => {\r\n    const data = this.dataStruct();\r\n    if (!data.length || !data[0].length) return [];\r\n    return data[0].map((cell) => cell.chroma);\r\n  });\r\n\r\n  constructor() {\r\n    effect(() => {\r\n      const color = this.color();\r\n      this.getTableData(color);\r\n    });\r\n  }\r\n\r\n  selectColor(rowNum: number, columnNum: number) {\r\n    const data = this.dataStruct();\r\n    const targetColor = data[rowNum][columnNum];\r\n    this.selectedColor.emit(targetColor);\r\n  }\r\n\r\n  getTextColor(bkgdColor: string) {\r\n    return (this.cus.calcWcag2('white', bkgdColor) as number) >= 7 ? 'white' : 'black';\r\n  }\r\n\r\n  async getTableData(color: string) {\r\n    if (!color) {\r\n      if (this.debug()) {\r\n        console.warn(`no color for palette table`);\r\n      }\r\n      this.dataStruct.set([]);\r\n      return;\r\n    }\r\n    const data = await this.cus.generateAllOklchVariants(color, this.lightSteps, this.chromaSteps);\r\n    this.dataStruct.set(data);\r\n  }\r\n}\r\n",
             "inputsClass": [],
             "outputsClass": [],
             "properties": [
@@ -1559,7 +1559,7 @@
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 7
+                    "line": 16
                 },
                 {
                     "name": "color",
@@ -1570,7 +1570,7 @@
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 5
+                    "line": 14
                 },
                 {
                     "name": "deltaChroma",
@@ -1581,7 +1581,7 @@
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 11
+                    "line": 20
                 },
                 {
                     "name": "deltaE",
@@ -1592,7 +1592,7 @@
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 9
+                    "line": 18
                 },
                 {
                     "name": "deltaLightness",
@@ -1603,7 +1603,7 @@
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 10
+                    "line": 19
                 },
                 {
                     "name": "hue",
@@ -1614,7 +1614,7 @@
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 8
+                    "line": 17
                 },
                 {
                     "name": "lightness",
@@ -1625,7 +1625,7 @@
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 6
+                    "line": 15
                 }
             ],
             "methods": [],
@@ -2371,7 +2371,7 @@
         },
         {
             "name": "ColorSliderComponent",
-            "id": "component-ColorSliderComponent-dfabaacd58980ea0deb584e3c7be3535a3ed61041e31ff7ee6786f855b4c876d2d6bfc5a8a6120030201c5ad550722f9811eeddd6a097fff5494127081a1c2f4",
+            "id": "component-ColorSliderComponent-d618fa4c1318279f8961e3123a73d8570342bd12ce31d9c72b0cf65df12dfb4fa36d858f1f29856b05deafac44cb673498ff0f88ffa0816eb87430a993c0e538",
             "file": "src/app/_components/color-slider/color-slider.component.ts",
             "encapsulation": [],
             "entryComponents": [],
@@ -2398,7 +2398,7 @@
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 35,
+                    "line": 36,
                     "required": false
                 },
                 {
@@ -2410,7 +2410,7 @@
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 36,
+                    "line": 37,
                     "required": false
                 },
                 {
@@ -2422,7 +2422,7 @@
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 29,
+                    "line": 30,
                     "required": false
                 },
                 {
@@ -2434,7 +2434,7 @@
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 33,
+                    "line": 34,
                     "required": false
                 },
                 {
@@ -2446,7 +2446,7 @@
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 34,
+                    "line": 35,
                     "required": false
                 },
                 {
@@ -2458,7 +2458,7 @@
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 38,
+                    "line": 39,
                     "required": false
                 },
                 {
@@ -2470,7 +2470,7 @@
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 37,
+                    "line": 38,
                     "required": false
                 }
             ],
@@ -2483,7 +2483,7 @@
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 40,
+                    "line": 41,
                     "required": false
                 }
             ],
@@ -2497,7 +2497,7 @@
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 27
+                    "line": 28
                 },
                 {
                     "name": "devColorVariant",
@@ -2508,7 +2508,7 @@
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 41
+                    "line": 43
                 },
                 {
                     "name": "initValue",
@@ -2519,18 +2519,18 @@
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 47
+                    "line": 48
                 },
                 {
                     "name": "slideContainer",
-                    "defaultValue": "viewChild<HTMLDivElement>('sliderContainer')",
+                    "defaultValue": "viewChild<ElementRef>('sliderContainer')",
                     "deprecated": false,
                     "deprecationMessage": "",
                     "type": "",
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 31
+                    "line": 32
                 },
                 {
                     "name": "slideInterval",
@@ -2541,7 +2541,7 @@
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 45
+                    "line": 46
                 },
                 {
                     "name": "slideMax",
@@ -2552,7 +2552,7 @@
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 44
+                    "line": 45
                 },
                 {
                     "name": "slideMin",
@@ -2563,7 +2563,7 @@
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 43
+                    "line": 44
                 },
                 {
                     "name": "value",
@@ -2574,7 +2574,7 @@
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 46
+                    "line": 47
                 }
             ],
             "methodsClass": [
@@ -2598,7 +2598,7 @@
                     "optional": false,
                     "returnType": "any",
                     "typeParameters": [],
-                    "line": 103,
+                    "line": 104,
                     "deprecated": false,
                     "deprecationMessage": "",
                     "modifierKind": [
@@ -2639,7 +2639,7 @@
                     "optional": false,
                     "returnType": "void",
                     "typeParameters": [],
-                    "line": 172,
+                    "line": 173,
                     "deprecated": false,
                     "deprecationMessage": "",
                     "jsdoctags": [
@@ -2667,7 +2667,7 @@
                     "optional": false,
                     "returnType": "void",
                     "typeParameters": [],
-                    "line": 135,
+                    "line": 136,
                     "deprecated": false,
                     "deprecationMessage": "",
                     "jsdoctags": [
@@ -2701,7 +2701,7 @@
                     "optional": false,
                     "returnType": "void",
                     "typeParameters": [],
-                    "line": 201,
+                    "line": 197,
                     "deprecated": false,
                     "deprecationMessage": "",
                     "jsdoctags": [
@@ -2750,7 +2750,7 @@
                     "optional": false,
                     "returnType": "void",
                     "typeParameters": [],
-                    "line": 197,
+                    "line": 193,
                     "deprecated": false,
                     "deprecationMessage": "",
                     "jsdoctags": [
@@ -2789,7 +2789,7 @@
                     "optional": false,
                     "returnType": "void",
                     "typeParameters": [],
-                    "line": 159,
+                    "line": 160,
                     "deprecated": false,
                     "deprecationMessage": ""
                 },
@@ -2799,7 +2799,7 @@
                     "optional": false,
                     "returnType": "void",
                     "typeParameters": [],
-                    "line": 92,
+                    "line": 93,
                     "deprecated": false,
                     "deprecationMessage": ""
                 }
@@ -2818,7 +2818,7 @@
             "description": "",
             "rawdescription": "\n",
             "type": "component",
-            "sourceCode": "import {\r\n  Component,\r\n  input,\r\n  Output,\r\n  EventEmitter,\r\n  inject,\r\n  effect,\r\n  output,\r\n  signal,\r\n  viewChild,\r\n} from '@angular/core';\r\nimport { CommonModule } from '@angular/common';\r\nimport { ColorUtilService } from '../../services/color-util.service';\r\n\r\nexport interface ResetObject {\r\n  reset: true;\r\n}\r\n\r\n@Component({\r\n  selector: 'app-color-slider',\r\n  templateUrl: './color-slider.component.html',\r\n  styleUrls: ['./color-slider.component.scss'],\r\n  imports: [CommonModule],\r\n  standalone: true,\r\n})\r\nexport class ColorSliderComponent {\r\n  cus = inject(ColorUtilService);\r\n\r\n  debug = input<boolean>(false);\r\n\r\n  slideContainer = viewChild<HTMLDivElement>('sliderContainer');\r\n\r\n  id = input<string | 'slider-0'>('slider-0');\r\n  name = input<string | 'color-slider'>('color-slider');\r\n  color = input<string>('');\r\n  constantChroma = input<boolean>(false);\r\n  showGradient = input<boolean>(false);\r\n  resetSlider = input<ResetObject | null>(null);\r\n\r\n  colorVariant = output<string | null>();\r\n  devColorVariant = signal<string>('');\r\n\r\n  slideMin = signal<number>(NaN);\r\n  slideMax = signal<number>(NaN);\r\n  slideInterval = signal<number>(NaN);\r\n  value = signal<number>(NaN);\r\n  initValue = signal<number>(NaN);\r\n\r\n  constructor() {\r\n    effect(() => {\r\n      const boundColor = this.color();\r\n      const showGradient = this.showGradient();\r\n      const resetSlider = this.resetSlider();\r\n      const debug = this.debug();\r\n\r\n      if (!this.slideContainer()) {\r\n        if (debug) {\r\n          console.warn(`no slide container view child yet.`);\r\n        }\r\n\r\n        return;\r\n      }\r\n\r\n      if (!boundColor) {\r\n        if (debug) {\r\n          console.error(`no color specified`);\r\n        }\r\n\r\n        return;\r\n      }\r\n\r\n      if (boundColor) {\r\n        this.getAndSetLightnessRange(boundColor, {\r\n          constantChroma: this.constantChroma(),\r\n        });\r\n      }\r\n\r\n      if (showGradient) {\r\n        this.gradient('on');\r\n      }\r\n\r\n      if (!showGradient) {\r\n        this.gradient('off');\r\n      }\r\n\r\n      if (resetSlider && this.initValue()) {\r\n        this.reset();\r\n      }\r\n    });\r\n  }\r\n\r\n  sendInitialLightVariant() {\r\n    const color = this.color();\r\n\r\n    // Good UX to just send the input color?\r\n    this.colorVariant.emit(color);\r\n\r\n    if (this.debug()) {\r\n      this.devColorVariant.set(color);\r\n    }\r\n  }\r\n\r\n  async getAndSetLightnessRange(color: string, options?: { constantChroma: boolean }) {\r\n    const rangeObject = await this.cus.getMinMaxLight(color);\r\n\r\n    if (!rangeObject) {\r\n      console.error(`no range object for color ${color}`);\r\n\r\n      return;\r\n    }\r\n\r\n    this.sendInitialLightVariant();\r\n\r\n    this.slideMin.set(0);\r\n    this.slideMax.set(1);\r\n\r\n    if (options?.constantChroma) {\r\n      this.slideMin.set(rangeObject.lightMin);\r\n\r\n      this.slideMax.set(rangeObject.lightMax);\r\n    }\r\n\r\n    this.slideInterval.set((this.slideMax() - this.slideMin()) / 80);\r\n\r\n    const lightnessIndex = 0;\r\n    const initialSlideValue = rangeObject.originalCoords[lightnessIndex];\r\n\r\n    this.initValue.set(initialSlideValue);\r\n\r\n    this.value.set(initialSlideValue);\r\n\r\n    this.redefineGradientStops(this.slideMin(), this.slideMax());\r\n  }\r\n\r\n  handleSliding(event: Event) {\r\n    const inputElem = event.target as HTMLInputElement;\r\n\r\n    if (inputElem) {\r\n      const lightValue = parseFloat(inputElem.value);\r\n\r\n      const boundColor = this.color();\r\n\r\n      if (boundColor) {\r\n        const lightnessVariant = this.cus.createSrgbColor(boundColor, lightValue);\r\n\r\n        if (this.debug()) {\r\n          console.log(`slide modding ${this.color} to ${lightnessVariant}`);\r\n\r\n          this.devColorVariant.set(!lightnessVariant ? '' : lightnessVariant);\r\n        }\r\n\r\n        this.colorVariant.emit(lightnessVariant);\r\n      } else {\r\n        console.error(`no color specified`);\r\n      }\r\n    }\r\n  }\r\n\r\n  reset() {\r\n    const compId = this.id();\r\n\r\n    // TODO: Isn't there an angular way to do this?\r\n    const element = document.getElementById(compId) as HTMLInputElement;\r\n\r\n    if (this.initValue) {\r\n      element.value = this.initValue.toString();\r\n    } else {\r\n      console.error(`trouble resetting slider, initValue is ${this.initValue}`);\r\n    }\r\n  }\r\n\r\n  gradient(val: 'on' | 'off') {\r\n    const compId = this.id();\r\n\r\n    // TODO: Anguar way to do this?\r\n    const targetElem = document.getElementById(`cc-${compId}`) as HTMLElement;\r\n\r\n    // const targetElem = this.slideContainer();\r\n\r\n    if (!targetElem) {\r\n      if (this.debug()) {\r\n        console.warn(`no elem to assign gradient to.`);\r\n      }\r\n\r\n      return;\r\n    }\r\n\r\n    if (val === 'on') {\r\n      targetElem.style.background = 'var(--gradient-background)';\r\n    }\r\n\r\n    if (val === 'off') {\r\n      targetElem.style.background = 'var(--default-background)';\r\n    }\r\n  }\r\n\r\n  redefineVariable(element: HTMLElement, variableName: string, newValue: string) {\r\n    element.style.setProperty(variableName, newValue);\r\n  }\r\n\r\n  redefineGradientStops(lightMin: number, lightMax: number) {\r\n    const compId = this.id();\r\n\r\n    if (this.color()) {\r\n      const targetElement = document.getElementById(`cc-${compId}`) as HTMLElement;\r\n\r\n      const stops = [\r\n        '--grad-stop-0',\r\n        '--grad-stop-1',\r\n        '--grad-stop-2',\r\n        '--grad-stop-3',\r\n        '--grad-stop-4',\r\n        '--grad-stop-5',\r\n      ];\r\n\r\n      // get new stop values\r\n      const stopInterval = (lightMax - lightMin) / (stops.length - 1);\r\n      const stopVals = [];\r\n\r\n      for (let i = 0; i < stops.length; i++) {\r\n        const targetLight = stopInterval * i + lightMin;\r\n        targetLight;\r\n\r\n        const boundColor = this.color();\r\n\r\n        if (!boundColor) {\r\n          console.error(`no color bound to redefine gradient stops with. . .`);\r\n\r\n          break;\r\n        } else {\r\n          const stopColor = this.cus.createSrgbColor(boundColor, targetLight);\r\n\r\n          stopVals.push(stopColor);\r\n        }\r\n      }\r\n\r\n      // assign new stop values\r\n\r\n      for (let i = 0; i < stops.length; i++) {\r\n        const targetStop = stops[i];\r\n        const targetStopVal = stopVals[i];\r\n\r\n        if (targetStopVal) {\r\n          this.redefineVariable(targetElement, targetStop, targetStopVal);\r\n        } else {\r\n          console.log(`no new val to assign`);\r\n        }\r\n      }\r\n    } else {\r\n      console.log(`no color specified`);\r\n    }\r\n  }\r\n}\r\n",
+            "sourceCode": "import {\r\n  Component,\r\n  input,\r\n  Output,\r\n  EventEmitter,\r\n  inject,\r\n  effect,\r\n  output,\r\n  signal,\r\n  viewChild,\r\n  ElementRef,\r\n} from '@angular/core';\r\nimport { CommonModule } from '@angular/common';\r\nimport { ColorUtilService } from '../../services/color-util.service';\r\n\r\nexport interface ResetObject {\r\n  reset: true;\r\n}\r\n\r\n@Component({\r\n  selector: 'app-color-slider',\r\n  templateUrl: './color-slider.component.html',\r\n  styleUrls: ['./color-slider.component.scss'],\r\n  imports: [CommonModule],\r\n  standalone: true,\r\n})\r\nexport class ColorSliderComponent {\r\n  cus = inject(ColorUtilService);\r\n\r\n  debug = input<boolean>(false);\r\n\r\n  slideContainer = viewChild<ElementRef>('sliderContainer');\r\n\r\n  id = input<string | 'slider-0'>('slider-0');\r\n  name = input<string | 'color-slider'>('color-slider');\r\n  color = input<string>('');\r\n  constantChroma = input<boolean>(false);\r\n  showGradient = input<boolean>(false);\r\n  resetSlider = input<ResetObject | null>(null);\r\n\r\n  colorVariant = output<string | null>();\r\n\r\n  devColorVariant = signal<string>('');\r\n  slideMin = signal<number>(NaN);\r\n  slideMax = signal<number>(NaN);\r\n  slideInterval = signal<number>(NaN);\r\n  value = signal<number>(NaN);\r\n  initValue = signal<number>(NaN);\r\n\r\n  constructor() {\r\n    effect(() => {\r\n      const boundColor = this.color();\r\n      const showGradient = this.showGradient();\r\n      const resetSlider = this.resetSlider();\r\n      const debug = this.debug();\r\n\r\n      if (!this.slideContainer()) {\r\n        if (debug) {\r\n          console.warn(`no slide container view child yet.`);\r\n        }\r\n\r\n        return;\r\n      }\r\n\r\n      if (!boundColor) {\r\n        if (debug) {\r\n          console.error(`no color specified`);\r\n        }\r\n\r\n        return;\r\n      }\r\n\r\n      if (boundColor) {\r\n        this.getAndSetLightnessRange(boundColor, {\r\n          constantChroma: this.constantChroma(),\r\n        });\r\n      }\r\n\r\n      if (showGradient) {\r\n        this.gradient('on');\r\n      }\r\n\r\n      if (!showGradient) {\r\n        this.gradient('off');\r\n      }\r\n\r\n      if (resetSlider && this.initValue()) {\r\n        this.reset();\r\n      }\r\n    });\r\n  }\r\n\r\n  sendInitialLightVariant() {\r\n    const color = this.color();\r\n\r\n    // Good UX to just send the input color?\r\n    this.colorVariant.emit(color);\r\n\r\n    if (this.debug()) {\r\n      this.devColorVariant.set(color);\r\n    }\r\n  }\r\n\r\n  async getAndSetLightnessRange(color: string, options?: { constantChroma: boolean }) {\r\n    const rangeObject = await this.cus.getMinMaxLight(color);\r\n\r\n    if (!rangeObject) {\r\n      console.error(`no range object for color ${color}`);\r\n\r\n      return;\r\n    }\r\n\r\n    this.sendInitialLightVariant();\r\n\r\n    this.slideMin.set(0);\r\n    this.slideMax.set(1);\r\n\r\n    if (options?.constantChroma) {\r\n      this.slideMin.set(rangeObject.lightMin);\r\n\r\n      this.slideMax.set(rangeObject.lightMax);\r\n    }\r\n\r\n    this.slideInterval.set((this.slideMax() - this.slideMin()) / 80);\r\n\r\n    const lightnessIndex = 0;\r\n    const initialSlideValue = rangeObject.originalCoords[lightnessIndex];\r\n\r\n    this.initValue.set(initialSlideValue);\r\n\r\n    this.value.set(initialSlideValue);\r\n\r\n    this.redefineGradientStops(this.slideMin(), this.slideMax());\r\n  }\r\n\r\n  handleSliding(event: Event) {\r\n    const inputElem = event.target as HTMLInputElement;\r\n\r\n    if (inputElem) {\r\n      const lightValue = parseFloat(inputElem.value);\r\n\r\n      const boundColor = this.color();\r\n\r\n      if (boundColor) {\r\n        const lightnessVariant = this.cus.createSrgbColor(boundColor, lightValue);\r\n\r\n        if (this.debug()) {\r\n          console.log(`slide modding ${this.color} to ${lightnessVariant}`);\r\n\r\n          this.devColorVariant.set(!lightnessVariant ? '' : lightnessVariant);\r\n        }\r\n\r\n        this.colorVariant.emit(lightnessVariant);\r\n      } else {\r\n        console.error(`no color specified`);\r\n      }\r\n    }\r\n  }\r\n\r\n  reset() {\r\n    const compId = this.id();\r\n\r\n    // TODO: Isn't there an angular way to do this?\r\n    const element = document.getElementById(compId) as HTMLInputElement;\r\n\r\n    if (this.initValue) {\r\n      element.value = this.initValue.toString();\r\n    } else {\r\n      console.error(`trouble resetting slider, initValue is ${this.initValue}`);\r\n    }\r\n  }\r\n\r\n  gradient(val: 'on' | 'off') {\r\n    const targetElem = this.slideContainer()?.nativeElement as HTMLElement;\r\n\r\n    if (!targetElem) {\r\n      if (this.debug()) {\r\n        console.warn(`no elem to assign gradient to.`);\r\n      }\r\n\r\n      return;\r\n    }\r\n\r\n    if (val === 'on') {\r\n      targetElem.style.background = 'var(--gradient-background)';\r\n    }\r\n\r\n    if (val === 'off') {\r\n      targetElem.style.background = 'var(--default-background)';\r\n    }\r\n  }\r\n\r\n  redefineVariable(element: HTMLElement, variableName: string, newValue: string) {\r\n    element.style.setProperty(variableName, newValue);\r\n  }\r\n\r\n  redefineGradientStops(lightMin: number, lightMax: number) {\r\n    const compId = this.id();\r\n\r\n    if (this.color()) {\r\n      const targetElement = document.getElementById(`cc-${compId}`) as HTMLElement;\r\n\r\n      const stops = [\r\n        '--grad-stop-0',\r\n        '--grad-stop-1',\r\n        '--grad-stop-2',\r\n        '--grad-stop-3',\r\n        '--grad-stop-4',\r\n        '--grad-stop-5',\r\n      ];\r\n\r\n      // get new stop values\r\n      const stopInterval = (lightMax - lightMin) / (stops.length - 1);\r\n      const stopVals = [];\r\n\r\n      for (let i = 0; i < stops.length; i++) {\r\n        const targetLight = stopInterval * i + lightMin;\r\n        targetLight;\r\n\r\n        const boundColor = this.color();\r\n\r\n        if (!boundColor) {\r\n          console.error(`no color bound to redefine gradient stops with. . .`);\r\n\r\n          break;\r\n        } else {\r\n          const stopColor = this.cus.createSrgbColor(boundColor, targetLight);\r\n\r\n          stopVals.push(stopColor);\r\n        }\r\n      }\r\n\r\n      // assign new stop values\r\n\r\n      for (let i = 0; i < stops.length; i++) {\r\n        const targetStop = stops[i];\r\n        const targetStopVal = stopVals[i];\r\n\r\n        if (targetStopVal) {\r\n          this.redefineVariable(targetElement, targetStop, targetStopVal);\r\n        } else {\r\n          console.log(`no new val to assign`);\r\n        }\r\n      }\r\n    } else {\r\n      console.log(`no color specified`);\r\n    }\r\n  }\r\n}\r\n",
             "assetsDirs": [],
             "styleUrlsData": [
                 {
@@ -2833,14 +2833,14 @@
                 "deprecated": false,
                 "deprecationMessage": "",
                 "args": [],
-                "line": 47
+                "line": 48
             },
             "extends": [],
             "templateData": "<div #sliderContainer [id]=\"'cc-' + id()\" class=\"comp-container\">\r\n  <label [for]=\"id()\" class=\"sr-only\">Chroma and hue bound Lightness</label>\r\n\r\n  @if (slideMin() !== slideMax()) {\r\n    <input\r\n      type=\"range\"\r\n      [name]=\"name()\"\r\n      [id]=\"id()\"\r\n      [min]=\"slideMin()\"\r\n      [max]=\"slideMax()\"\r\n      [step]=\"slideInterval()\"\r\n      [value]=\"value()\"\r\n      (input)=\"handleSliding($event)\"\r\n    />\r\n  } @else if (slideMin() === slideMax()) {\r\n    <div class=\"special-case\">\r\n      <div>!</div>\r\n    </div>\r\n  }\r\n</div>\r\n\r\n<div class=\"dev-overlay\" [ngClass]=\"{ active: debug() }\">\r\n  <h2>dev overlay</h2>\r\n\r\n  <div\r\n    class=\"light-variant-chip\"\r\n    [style.borderColor]=\"devColorVariant()\"\r\n    [style.backgroundColor]=\"color()\"\r\n  ></div>\r\n</div>\r\n"
         },
         {
             "name": "CopyToClipboardButtonComponent",
-            "id": "component-CopyToClipboardButtonComponent-04ee7532967832742025521d161223b908dea8fa8be928c31f59a347e7d20395438bbd17dbe634c3fd194e951dd240bf56d243dbb84ebd8e65dc6c4ab938fc7d",
+            "id": "component-CopyToClipboardButtonComponent-1b8f0a48b6b32734d574345a5e8cfdc6e76f876a93bb2eb5c77ff7c9f579bdf1318ff29ff69dc496a8da5532f3e5b14e79d35508ef1c23e9cfa6edea60f78b47",
             "file": "src/app/_components/copy-to-clipboard-button/copy-to-clipboard-button.component.ts",
             "encapsulation": [],
             "entryComponents": [],
@@ -2886,11 +2886,14 @@
             "outputsClass": [
                 {
                     "name": "copyEvent",
-                    "defaultValue": "new EventEmitter<CopyToClipboardEvent>()",
                     "deprecated": false,
                     "deprecationMessage": "",
+                    "type": "CopyToClipboardEvent",
+                    "indexKey": "",
+                    "optional": false,
+                    "description": "",
                     "line": 18,
-                    "type": "EventEmitter"
+                    "required": false
                 }
             ],
             "propertiesClass": [],
@@ -2918,7 +2921,7 @@
             "description": "",
             "rawdescription": "\n",
             "type": "component",
-            "sourceCode": "import { Component, Output, EventEmitter, input } from '@angular/core';\r\n\r\nexport class CopyToClipboardEvent {\r\n  copied: boolean = false;\r\n  color: string = '';\r\n}\r\n\r\n@Component({\r\n  selector: 'app-copy-to-clipboard-button',\r\n  templateUrl: './copy-to-clipboard-button.component.html',\r\n  styleUrls: ['./copy-to-clipboard-button.component.scss'],\r\n  standalone: true,\r\n})\r\nexport class CopyToClipboardButtonComponent {\r\n  color = input<string>('');\r\n  debug = input<boolean>(true);\r\n\r\n  @Output() copyEvent = new EventEmitter<CopyToClipboardEvent>();\r\n\r\n  async copyToClipboard(): Promise<void> {\r\n    const color = this.color();\r\n\r\n    if (color) {\r\n      const colorSansHex = color.replace('#', '');\r\n\r\n      try {\r\n        await navigator.clipboard.writeText(colorSansHex);\r\n\r\n        this.copyEvent.emit({\r\n          copied: true,\r\n          color: colorSansHex,\r\n        });\r\n\r\n        if (this.debug()) {\r\n          console.log(color, 'copied to clipboard');\r\n        }\r\n      } catch (err) {\r\n        this.copyEvent.emit({\r\n          copied: false,\r\n          color: colorSansHex,\r\n        });\r\n\r\n        console.error('Failed to copy text: ', err);\r\n      }\r\n    } else {\r\n      console.error('nothing to copy');\r\n    }\r\n  }\r\n}\r\n",
+            "sourceCode": "import { Component, Output, EventEmitter, input, output } from '@angular/core';\r\n\r\nexport class CopyToClipboardEvent {\r\n  copied: boolean = false;\r\n  color: string = '';\r\n}\r\n\r\n@Component({\r\n  selector: 'app-copy-to-clipboard-button',\r\n  templateUrl: './copy-to-clipboard-button.component.html',\r\n  styleUrls: ['./copy-to-clipboard-button.component.scss'],\r\n  standalone: true,\r\n})\r\nexport class CopyToClipboardButtonComponent {\r\n  color = input<string>('');\r\n  debug = input<boolean>(true);\r\n\r\n  copyEvent = output<CopyToClipboardEvent>();\r\n\r\n  async copyToClipboard(): Promise<void> {\r\n    const color = this.color();\r\n\r\n    if (!color) {\r\n      if (this.debug()) {\r\n        console.warn('no color provided to copy');\r\n      }\r\n\r\n      return;\r\n    }\r\n\r\n    const colorSansHex = color.replace('#', '');\r\n\r\n    try {\r\n      await navigator.clipboard.writeText(colorSansHex);\r\n\r\n      this.copyEvent.emit({\r\n        copied: true,\r\n        color: colorSansHex,\r\n      });\r\n\r\n      if (this.debug()) {\r\n        console.log(color, 'copied to clipboard');\r\n      }\r\n    } catch (err) {\r\n      this.copyEvent.emit({\r\n        copied: false,\r\n        color: colorSansHex,\r\n      });\r\n\r\n      console.error('Failed to copy text: ', err);\r\n    }\r\n  }\r\n}\r\n",
             "assetsDirs": [],
             "styleUrlsData": [
                 {
@@ -2928,7 +2931,7 @@
             ],
             "stylesData": "",
             "extends": [],
-            "templateData": "<div class=\"comp-container\">\r\n  <button [disabled]=\"!color()\" [id]=\"'ctc-0'\" (click)=\"copyToClipboard()\">\r\n    <span class=\"sr-only\"> Copy current variant to Clipboard </span>\r\n    <div class=\"svg-container\">\r\n      <svg\r\n        xmlns=\"http://www.w3.org/2000/svg\"\r\n        viewBox=\"0 0 24 24\"\r\n        x=\"0px\"\r\n        y=\"0px\"\r\n      >\r\n        <path\r\n          fill-rule=\"evenodd\"\r\n          d=\"M384,608 L384,624 L368,624 L368,608 L384,608 Z M370,622 L382,622 L382,610 L370,610 L370,622 Z M362,602 L362,614 L366,614 L366,616 L360,616 L360,600 L376,600 L376,606 L374,606 L374,602 L362,602 Z\"\r\n          transform=\"translate(-360 -600)\"\r\n        />\r\n      </svg>\r\n    </div>\r\n  </button>\r\n</div>\r\n"
+            "templateData": "<div class=\"comp-container\">\r\n  <button\r\n    id=\"'ctc-0'\"\r\n    [disabled]=\"!color()\"\r\n    [attr.aria-disabled]=\"!color()\"\r\n    (click)=\"copyToClipboard()\"\r\n  >\r\n    <span class=\"sr-only\"> Copy current variant to Clipboard </span>\r\n\r\n    <div class=\"svg-container\">\r\n      <svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" x=\"0px\" y=\"0px\">\r\n        <path\r\n          fill-rule=\"evenodd\"\r\n          d=\"M384,608 L384,624 L368,624 L368,608 L384,608 Z M370,622 L382,622 L382,610 L370,610 L370,622 Z M362,602 L362,614 L366,614 L366,616 L360,616 L360,600 L376,600 L376,606 L374,606 L374,602 L362,602 Z\"\r\n          transform=\"translate(-360 -600)\"\r\n        />\r\n      </svg>\r\n    </div>\r\n  </button>\r\n</div>\r\n"
         },
         {
             "name": "HeaderComponent",
@@ -3018,7 +3021,7 @@
         },
         {
             "name": "MetadataComponent",
-            "id": "component-MetadataComponent-cc15cf4cac05281e32e26d00f8d7592be5eeb4a6c2ffdf3b8bae1ebcb6798ee03a6aae5ce70ef87d82e4b5accd2027142406e803fa528ca54a46bf854d98a4be",
+            "id": "component-MetadataComponent-3889e5a50165df2e8062d1e3b7b565480e69be76f15ffde16aed2030f3092c772ed38fddb0dd43230633b15661d4bae4644711d29877262bc9969e4cc1f5b579",
             "file": "src/app/_components/metadata/metadata.component.ts",
             "encapsulation": [],
             "entryComponents": [],
@@ -3084,29 +3087,39 @@
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 29
+                    "line": 29,
+                    "modifierKind": [
+                        123,
+                        148
+                    ]
                 },
                 {
                     "name": "colorOneMeta",
-                    "defaultValue": "null",
+                    "defaultValue": "computed<ColorMetaObj | null>(() => {\r\n    const colOne = this.colorOne();\r\n    if (!colOne) {\r\n      if (this.debug()) {\r\n        console.warn('failed to get colorOne meta');\r\n      }\r\n      return null;\r\n    }\r\n    return this.cus.getColorMeta(colOne) ?? null;\r\n  })",
                     "deprecated": false,
                     "deprecationMessage": "",
-                    "type": "ColorMetaObj | null",
+                    "type": "",
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 39
+                    "line": 31,
+                    "modifierKind": [
+                        148
+                    ]
                 },
                 {
                     "name": "colorTwoMeta",
-                    "defaultValue": "null",
+                    "defaultValue": "computed<ColorMetaObj | null>(() => {\r\n    const colTwo = this.colorTwo();\r\n    if (!colTwo) {\r\n      if (this.debug()) {\r\n        console.warn('failed to get colorTwo meta');\r\n      }\r\n      return null;\r\n    }\r\n    return this.cus.getColorMeta(colTwo) ?? null;\r\n  })",
                     "deprecated": false,
                     "deprecationMessage": "",
-                    "type": "ColorMetaObj | null",
+                    "type": "",
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 41
+                    "line": 42,
+                    "modifierKind": [
+                        148
+                    ]
                 },
                 {
                     "name": "cus",
@@ -3117,162 +3130,42 @@
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 28
+                    "line": 28,
+                    "modifierKind": [
+                        123,
+                        148
+                    ]
                 },
                 {
                     "name": "differences",
-                    "defaultValue": "new DifferencesDataObj()",
+                    "defaultValue": "computed<DifferencesDataObj>(() => {\r\n    const colOne = this.colorOne();\r\n    const colTwo = this.colorTwo();\r\n    const result = new DifferencesDataObj();\r\n    if (!colOne || !colTwo) {\r\n      if (this.debug()) {\r\n        console.warn('failed to get color differences');\r\n      }\r\n      return result;\r\n    }\r\n    const deltaE = this.cus.calcDeltaE(colOne, colTwo);\r\n    const wcag2New = this.cms.getContrast(colOne, colTwo, 'bpca');\r\n    const wcag2Old = this.cus.calcWcag2(colOne, colTwo);\r\n    const apca = this.cms.getContrast(colOne, colTwo, 'apca');\r\n    result.deltaE = !deltaE ? NaN : deltaE;\r\n    result.wcag2New = !wcag2New ? NaN : wcag2New;\r\n    result.wcag2Old = !wcag2Old ? NaN : wcag2Old;\r\n    result.apca = !apca ? NaN : apca;\r\n    return result;\r\n  })",
                     "deprecated": false,
                     "deprecationMessage": "",
-                    "type": "DifferencesDataObj",
+                    "type": "",
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 31
+                    "line": 53,
+                    "modifierKind": [
+                        148
+                    ]
                 },
                 {
                     "name": "successes",
-                    "defaultValue": "{\r\n    text: null,\r\n    largeText: null,\r\n    objectMinDimension: NaN,\r\n  }",
+                    "defaultValue": "computed<SuccessesObj>(() => {\r\n    const colOne = this.colorOne();\r\n    const colTwo = this.colorTwo();\r\n    const result: SuccessesObj = {\r\n      text: null,\r\n      largeText: null,\r\n      objectMinDimension: NaN,\r\n    };\r\n    if (!colOne || !colTwo) {\r\n      if (this.debug()) {\r\n        console.warn('no colors for successes');\r\n      }\r\n      return result;\r\n    }\r\n    const wcagNew = this.cms.getContrast(colOne, colTwo, 'bpca');\r\n    const apcaScore = this.cms.getContrast(colOne, colTwo, 'apca');\r\n    if (!wcagNew || !apcaScore) {\r\n      if (this.debug()) {\r\n        console.warn('trouble getting scores');\r\n      }\r\n      return result;\r\n    }\r\n    if (wcagNew < 0 || Math.abs(apcaScore) < 0) {\r\n      if (this.debug()) {\r\n        console.warn('something wonky with calculating scores');\r\n      }\r\n      return result;\r\n    }\r\n    result.text = wcagNew >= 4.5 ? 'pass' : 'fail';\r\n    result.largeText = wcagNew >= 3 ? 'pass' : 'fail';\r\n    const minDimension = this.cus.getMinObjectDimension(apcaScore);\r\n    result.objectMinDimension = Number.isNaN(minDimension) ? 'invisible' : minDimension;\r\n    return result;\r\n  })",
                     "deprecated": false,
                     "deprecationMessage": "",
-                    "type": "SuccessesObj",
+                    "type": "",
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 33
-                }
-            ],
-            "methodsClass": [
-                {
-                    "name": "getColorDifference",
-                    "args": [
-                        {
-                            "name": "colOne",
-                            "type": "string | null",
-                            "deprecated": false,
-                            "deprecationMessage": ""
-                        },
-                        {
-                            "name": "colTwo",
-                            "type": "string | null",
-                            "deprecated": false,
-                            "deprecationMessage": ""
-                        }
-                    ],
-                    "optional": false,
-                    "returnType": "void",
-                    "typeParameters": [],
-                    "line": 70,
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "jsdoctags": [
-                        {
-                            "name": "colOne",
-                            "type": "string | null",
-                            "deprecated": false,
-                            "deprecationMessage": "",
-                            "tagName": {
-                                "text": "param"
-                            }
-                        },
-                        {
-                            "name": "colTwo",
-                            "type": "string | null",
-                            "deprecated": false,
-                            "deprecationMessage": "",
-                            "tagName": {
-                                "text": "param"
-                            }
-                        }
-                    ]
-                },
-                {
-                    "name": "getColorMeta",
-                    "args": [
-                        {
-                            "name": "colOne",
-                            "type": "string | null",
-                            "deprecated": false,
-                            "deprecationMessage": ""
-                        },
-                        {
-                            "name": "colTwo",
-                            "type": "string | null",
-                            "deprecated": false,
-                            "deprecationMessage": ""
-                        }
-                    ],
-                    "optional": false,
-                    "returnType": "void",
-                    "typeParameters": [],
-                    "line": 56,
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "jsdoctags": [
-                        {
-                            "name": "colOne",
-                            "type": "string | null",
-                            "deprecated": false,
-                            "deprecationMessage": "",
-                            "tagName": {
-                                "text": "param"
-                            }
-                        },
-                        {
-                            "name": "colTwo",
-                            "type": "string | null",
-                            "deprecated": false,
-                            "deprecationMessage": "",
-                            "tagName": {
-                                "text": "param"
-                            }
-                        }
-                    ]
-                },
-                {
-                    "name": "getSuccesses",
-                    "args": [
-                        {
-                            "name": "colOne",
-                            "type": "string | null",
-                            "deprecated": false,
-                            "deprecationMessage": ""
-                        },
-                        {
-                            "name": "colTwo",
-                            "type": "string | null",
-                            "deprecated": false,
-                            "deprecationMessage": ""
-                        }
-                    ],
-                    "optional": false,
-                    "returnType": "void",
-                    "typeParameters": [],
-                    "line": 91,
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "jsdoctags": [
-                        {
-                            "name": "colOne",
-                            "type": "string | null",
-                            "deprecated": false,
-                            "deprecationMessage": "",
-                            "tagName": {
-                                "text": "param"
-                            }
-                        },
-                        {
-                            "name": "colTwo",
-                            "type": "string | null",
-                            "deprecated": false,
-                            "deprecationMessage": "",
-                            "tagName": {
-                                "text": "param"
-                            }
-                        }
+                    "line": 74,
+                    "modifierKind": [
+                        148
                     ]
                 }
             ],
+            "methodsClass": [],
             "deprecated": false,
             "deprecationMessage": "",
             "hostBindings": [],
@@ -3282,7 +3175,7 @@
             "description": "",
             "rawdescription": "\n",
             "type": "component",
-            "sourceCode": "import { Component, effect, inject, input } from '@angular/core';\r\nimport { ColorUtilService, ColorMetaObj } from '../../services/color-util.service';\r\nimport { ColorMetricsService } from '../../services/color-metrics.service';\r\n\r\nexport class DifferencesDataObj {\r\n  deltaE: number = NaN;\r\n  wcag2Old: number = NaN;\r\n  wcag2New: number = NaN;\r\n  apca: number = NaN;\r\n}\r\nexport class SuccessesObj {\r\n  text: 'pass' | 'fail' | null = null;\r\n  largeText: 'pass' | 'fail' | null = null;\r\n  objectMinDimension: number | string = NaN;\r\n}\r\n\r\n@Component({\r\n  selector: 'app-metadata',\r\n  templateUrl: './metadata.component.html',\r\n  styleUrls: ['./metadata.component.scss'],\r\n  standalone: true,\r\n})\r\nexport class MetadataComponent {\r\n  colorOne = input<string>('');\r\n  colorTwo = input<string>('');\r\n  debug = input<boolean>(false);\r\n\r\n  cus = inject(ColorUtilService);\r\n  cms = inject(ColorMetricsService);\r\n\r\n  differences: DifferencesDataObj = new DifferencesDataObj();\r\n\r\n  successes: SuccessesObj = {\r\n    text: null,\r\n    largeText: null,\r\n    objectMinDimension: NaN,\r\n  };\r\n\r\n  colorOneMeta: ColorMetaObj | null = null;\r\n\r\n  colorTwoMeta: ColorMetaObj | null = null;\r\n\r\n  constructor() {\r\n    effect(() => {\r\n      const colorOne = this.colorOne();\r\n      const colorTwo = this.colorTwo();\r\n\r\n      this.getColorMeta(colorOne, colorTwo);\r\n\r\n      this.getColorDifference(colorOne, colorTwo);\r\n\r\n      this.getSuccesses(colorOne, colorTwo);\r\n    });\r\n  }\r\n\r\n  getColorMeta(colOne: string | null, colTwo: string | null) {\r\n    if (colOne && colTwo) {\r\n      if (this.cus.getColorMeta(colOne)) {\r\n        this.colorOneMeta = this.cus.getColorMeta(colOne);\r\n\r\n        this.colorTwoMeta = this.cus.getColorMeta(colTwo);\r\n      }\r\n    } else {\r\n      if (this.debug()) {\r\n        console.warn(`failed to get color meta`);\r\n      }\r\n    }\r\n  }\r\n\r\n  getColorDifference(colOne: string | null, colTwo: string | null) {\r\n    if (colOne && colTwo) {\r\n      const deltaE = this.cus.calcDeltaE(colOne, colTwo);\r\n      const wcag2New = this.cms.getContrast(colOne, colTwo, 'bpca');\r\n      const wcag2Old = this.cus.calcWcag2(colOne, colTwo);\r\n      const apca = this.cms.getContrast(colOne, colTwo, 'apca');\r\n\r\n      this.differences.deltaE = !deltaE ? NaN : deltaE;\r\n\r\n      this.differences.wcag2New = !wcag2New ? NaN : wcag2New;\r\n\r\n      this.differences.wcag2Old = !wcag2Old ? NaN : wcag2Old;\r\n\r\n      this.differences.apca = !apca ? NaN : apca;\r\n    } else {\r\n      if (this.debug()) {\r\n        console.warn(`failed to get color differences`);\r\n      }\r\n    }\r\n  }\r\n\r\n  getSuccesses(colOne: string | null, colTwo: string | null) {\r\n    if (colOne && colTwo) {\r\n      const wcagNew = this.cms.getContrast(colOne, colTwo, 'bpca');\r\n\r\n      const apcaScore = this.cms.getContrast(colOne, colTwo, 'apca');\r\n\r\n      if (wcagNew && apcaScore) {\r\n        if (wcagNew >= 0 && Math.abs(apcaScore) >= 0) {\r\n          this.successes.text = wcagNew >= 4.5 ? 'pass' : 'fail';\r\n\r\n          this.successes.largeText = wcagNew >= 3 ? 'pass' : 'fail';\r\n\r\n          const minDimension = this.cus.getMinObjectDimension(apcaScore);\r\n\r\n          this.successes.objectMinDimension = Number.isNaN(minDimension)\r\n            ? 'invisible'\r\n            : minDimension;\r\n        } else {\r\n          if (this.debug()) {\r\n            console.warn(`something wonky with calculating scores`);\r\n          }\r\n        }\r\n      } else {\r\n        if (this.debug()) {\r\n          console.warn(`trouble getting scores`);\r\n        }\r\n      }\r\n    } else {\r\n      if (this.debug()) {\r\n        console.warn('no colors for successes');\r\n      }\r\n    }\r\n  }\r\n}\r\n",
+            "sourceCode": "import { Component, effect, inject, input, signal, computed } from '@angular/core';\r\nimport { ColorUtilService, ColorMetaObj } from '../../services/color-util.service';\r\nimport { ColorMetricsService } from '../../services/color-metrics.service';\r\n\r\nexport class DifferencesDataObj {\r\n  deltaE: number = NaN;\r\n  wcag2Old: number = NaN;\r\n  wcag2New: number = NaN;\r\n  apca: number = NaN;\r\n}\r\nexport class SuccessesObj {\r\n  text: 'pass' | 'fail' | null = null;\r\n  largeText: 'pass' | 'fail' | null = null;\r\n  objectMinDimension: number | string = NaN;\r\n}\r\n\r\n@Component({\r\n  selector: 'app-metadata',\r\n  templateUrl: './metadata.component.html',\r\n  styleUrls: ['./metadata.component.scss'],\r\n  standalone: true,\r\n})\r\nexport class MetadataComponent {\r\n  colorOne = input<string>('');\r\n  colorTwo = input<string>('');\r\n  debug = input<boolean>(false);\r\n\r\n  private readonly cus = inject(ColorUtilService);\r\n  private readonly cms = inject(ColorMetricsService);\r\n\r\n  readonly colorOneMeta = computed<ColorMetaObj | null>(() => {\r\n    const colOne = this.colorOne();\r\n    if (!colOne) {\r\n      if (this.debug()) {\r\n        console.warn('failed to get colorOne meta');\r\n      }\r\n      return null;\r\n    }\r\n    return this.cus.getColorMeta(colOne) ?? null;\r\n  });\r\n\r\n  readonly colorTwoMeta = computed<ColorMetaObj | null>(() => {\r\n    const colTwo = this.colorTwo();\r\n    if (!colTwo) {\r\n      if (this.debug()) {\r\n        console.warn('failed to get colorTwo meta');\r\n      }\r\n      return null;\r\n    }\r\n    return this.cus.getColorMeta(colTwo) ?? null;\r\n  });\r\n\r\n  readonly differences = computed<DifferencesDataObj>(() => {\r\n    const colOne = this.colorOne();\r\n    const colTwo = this.colorTwo();\r\n    const result = new DifferencesDataObj();\r\n    if (!colOne || !colTwo) {\r\n      if (this.debug()) {\r\n        console.warn('failed to get color differences');\r\n      }\r\n      return result;\r\n    }\r\n    const deltaE = this.cus.calcDeltaE(colOne, colTwo);\r\n    const wcag2New = this.cms.getContrast(colOne, colTwo, 'bpca');\r\n    const wcag2Old = this.cus.calcWcag2(colOne, colTwo);\r\n    const apca = this.cms.getContrast(colOne, colTwo, 'apca');\r\n    result.deltaE = !deltaE ? NaN : deltaE;\r\n    result.wcag2New = !wcag2New ? NaN : wcag2New;\r\n    result.wcag2Old = !wcag2Old ? NaN : wcag2Old;\r\n    result.apca = !apca ? NaN : apca;\r\n    return result;\r\n  });\r\n\r\n  readonly successes = computed<SuccessesObj>(() => {\r\n    const colOne = this.colorOne();\r\n    const colTwo = this.colorTwo();\r\n    const result: SuccessesObj = {\r\n      text: null,\r\n      largeText: null,\r\n      objectMinDimension: NaN,\r\n    };\r\n    if (!colOne || !colTwo) {\r\n      if (this.debug()) {\r\n        console.warn('no colors for successes');\r\n      }\r\n      return result;\r\n    }\r\n    const wcagNew = this.cms.getContrast(colOne, colTwo, 'bpca');\r\n    const apcaScore = this.cms.getContrast(colOne, colTwo, 'apca');\r\n    if (!wcagNew || !apcaScore) {\r\n      if (this.debug()) {\r\n        console.warn('trouble getting scores');\r\n      }\r\n      return result;\r\n    }\r\n    if (wcagNew < 0 || Math.abs(apcaScore) < 0) {\r\n      if (this.debug()) {\r\n        console.warn('something wonky with calculating scores');\r\n      }\r\n      return result;\r\n    }\r\n    result.text = wcagNew >= 4.5 ? 'pass' : 'fail';\r\n    result.largeText = wcagNew >= 3 ? 'pass' : 'fail';\r\n    const minDimension = this.cus.getMinObjectDimension(apcaScore);\r\n    result.objectMinDimension = Number.isNaN(minDimension) ? 'invisible' : minDimension;\r\n    return result;\r\n  });\r\n}\r\n",
             "assetsDirs": [],
             "styleUrlsData": [
                 {
@@ -3291,16 +3184,8 @@
                 }
             ],
             "stylesData": "",
-            "constructorObj": {
-                "name": "constructor",
-                "description": "",
-                "deprecated": false,
-                "deprecationMessage": "",
-                "args": [],
-                "line": 41
-            },
             "extends": [],
-            "templateData": "<div class=\"comp-container\">\r\n  <div>\r\n    <h3>Successes and Minimums</h3>\r\n    <table>\r\n      <caption class=\"sr-only\">\r\n        Various pass, fails or minimum dimensions related to visual elements.\r\n      </caption>\r\n      <thead class=\"sr-only\">\r\n        <tr>\r\n          <th>Criteria</th>\r\n          <th>Value</th>\r\n        </tr>\r\n      </thead>\r\n      <tbody>\r\n        <tr>\r\n          <td>Text</td>\r\n          <td>{{ successes.text }}</td>\r\n        </tr>\r\n        <tr>\r\n          <td>Large Text</td>\r\n          <td>{{ successes.largeText }}</td>\r\n        </tr>\r\n        <tr>\r\n          <td>\r\n            <cite><a href=\"#notes-object\">Object</a></cite>\r\n          </td>\r\n          <td>{{ successes.objectMinDimension }}</td>\r\n        </tr>\r\n      </tbody>\r\n    </table>\r\n  </div>\r\n\r\n  <div>\r\n    <h3>Differences</h3>\r\n    <table>\r\n      <caption class=\"sr-only\">\r\n        Differences between Foreground Color and Background Color.\r\n      </caption>\r\n      <thead class=\"sr-only\">\r\n        <tr>\r\n          <th>Measurement</th>\r\n          <th>Value</th>\r\n        </tr>\r\n      </thead>\r\n      <tbody>\r\n        <tr>\r\n          <td>Delta E</td>\r\n          <td>{{ differences.deltaE }}</td>\r\n        </tr>\r\n        <tr>\r\n          <td>\r\n            <cite\r\n              ><a href=\"#notes-perceptual-contrast\">\r\n                Perceptual contrast</a\r\n              ></cite\r\n            >\r\n          </td>\r\n          <td>{{ differences.apca }}</td>\r\n        </tr>\r\n        <tr>\r\n          <td>\r\n            <cite><a href=\"#notes-wcag2-compat\"> WCAG 2 compatible</a></cite>\r\n          </td>\r\n          <td>{{ differences.wcag2New }}</td>\r\n        </tr>\r\n        <tr>\r\n          <td>\r\n            <cite><a href=\"#notes-wcag2\">WCAG 2</a></cite>\r\n          </td>\r\n          <td>{{ differences.wcag2Old }}</td>\r\n        </tr>\r\n      </tbody>\r\n    </table>\r\n  </div>\r\n\r\n  <div>\r\n    <h3>Foreground Color</h3>\r\n    <table>\r\n      <caption class=\"sr-only\">\r\n        Foreground Color Metadata\r\n      </caption>\r\n      <thead class=\"sr-only\">\r\n        <tr>\r\n          <th>Measurement</th>\r\n          <th>Value</th>\r\n        </tr>\r\n      </thead>\r\n      <tbody>\r\n        <tr>\r\n          <td>Saturation</td>\r\n          <td>{{ colorOneMeta?.saturation }}</td>\r\n        </tr>\r\n        <tr>\r\n          <td>Lightness</td>\r\n          <td>{{ colorOneMeta?.lightness }}</td>\r\n        </tr>\r\n        <tr>\r\n          <td>Chroma</td>\r\n          <td>{{ colorOneMeta?.chroma }}</td>\r\n        </tr>\r\n        <tr>\r\n          <td>Hue</td>\r\n          <td>{{ colorOneMeta?.hue }}</td>\r\n        </tr>\r\n      </tbody>\r\n    </table>\r\n  </div>\r\n\r\n  <div>\r\n    <h3>Background Color</h3>\r\n    <table>\r\n      <caption class=\"sr-only\">\r\n        Background Color Metadata\r\n      </caption>\r\n      <thead class=\"sr-only\">\r\n        <tr>\r\n          <th>Measurement</th>\r\n          <th>Value</th>\r\n        </tr>\r\n      </thead>\r\n      <tbody>\r\n        <tr>\r\n          <td>Saturation</td>\r\n          <td>{{ colorTwoMeta?.saturation }}</td>\r\n        </tr>\r\n        <tr>\r\n          <td>Lightness</td>\r\n          <td>{{ colorTwoMeta?.lightness }}</td>\r\n        </tr>\r\n        <tr>\r\n          <td>Chroma</td>\r\n          <td>{{ colorTwoMeta?.chroma }}</td>\r\n        </tr>\r\n        <tr>\r\n          <td>Hue</td>\r\n          <td>{{ colorTwoMeta?.hue }}</td>\r\n        </tr>\r\n      </tbody>\r\n    </table>\r\n  </div>\r\n</div>\r\n"
+            "templateData": "<div class=\"comp-container\">\r\n  <div>\r\n    <h3>Successes and Minimums</h3>\r\n    <table>\r\n      <caption class=\"sr-only\">\r\n        Various pass, fails or minimum dimensions related to visual elements.\r\n      </caption>\r\n      <thead class=\"sr-only\">\r\n        <tr>\r\n          <th>Criteria</th>\r\n          <th>Value</th>\r\n        </tr>\r\n      </thead>\r\n      <tbody>\r\n        <tr>\r\n          <td>Text</td>\r\n          <td>{{ successes().text }}</td>\r\n        </tr>\r\n        <tr>\r\n          <td>Large Text</td>\r\n          <td>{{ successes().largeText }}</td>\r\n        </tr>\r\n        <tr>\r\n          <td>\r\n            <cite><a href=\"#notes-object\">Object</a></cite>\r\n          </td>\r\n          <td>{{ successes().objectMinDimension }}</td>\r\n        </tr>\r\n      </tbody>\r\n    </table>\r\n  </div>\r\n\r\n  <div>\r\n    <h3>Differences</h3>\r\n    <table>\r\n      <caption class=\"sr-only\">\r\n        Differences between Foreground Color and Background Color.\r\n      </caption>\r\n      <thead class=\"sr-only\">\r\n        <tr>\r\n          <th>Measurement</th>\r\n          <th>Value</th>\r\n        </tr>\r\n      </thead>\r\n      <tbody>\r\n        <tr>\r\n          <td>Delta E</td>\r\n          <td>{{ differences().deltaE }}</td>\r\n        </tr>\r\n        <tr>\r\n          <td>\r\n            <cite><a href=\"#notes-perceptual-contrast\"> Perceptual contrast</a></cite>\r\n          </td>\r\n          <td>{{ differences().apca }}</td>\r\n        </tr>\r\n        <tr>\r\n          <td>\r\n            <cite><a href=\"#notes-wcag2-compat\"> WCAG 2 compatible</a></cite>\r\n          </td>\r\n          <td>{{ differences().wcag2New }}</td>\r\n        </tr>\r\n        <tr>\r\n          <td>\r\n            <cite><a href=\"#notes-wcag2\">WCAG 2</a></cite>\r\n          </td>\r\n          <td>{{ differences().wcag2Old }}</td>\r\n        </tr>\r\n      </tbody>\r\n    </table>\r\n  </div>\r\n\r\n  <div>\r\n    <h3>Foreground Color</h3>\r\n    <table>\r\n      <caption class=\"sr-only\">\r\n        Foreground Color Metadata\r\n      </caption>\r\n      <thead class=\"sr-only\">\r\n        <tr>\r\n          <th>Measurement</th>\r\n          <th>Value</th>\r\n        </tr>\r\n      </thead>\r\n      <tbody>\r\n        <tr>\r\n          <td>Saturation</td>\r\n          <td>{{ colorOneMeta()?.saturation }}</td>\r\n        </tr>\r\n        <tr>\r\n          <td>Lightness</td>\r\n          <td>{{ colorOneMeta()?.lightness }}</td>\r\n        </tr>\r\n        <tr>\r\n          <td>Chroma</td>\r\n          <td>{{ colorOneMeta()?.chroma }}</td>\r\n        </tr>\r\n        <tr>\r\n          <td>Hue</td>\r\n          <td>{{ colorOneMeta()?.hue }}</td>\r\n        </tr>\r\n      </tbody>\r\n    </table>\r\n  </div>\r\n\r\n  <div>\r\n    <h3>Background Color</h3>\r\n    <table>\r\n      <caption class=\"sr-only\">\r\n        Background Color Metadata\r\n      </caption>\r\n      <thead class=\"sr-only\">\r\n        <tr>\r\n          <th>Measurement</th>\r\n          <th>Value</th>\r\n        </tr>\r\n      </thead>\r\n      <tbody>\r\n        <tr>\r\n          <td>Saturation</td>\r\n          <td>{{ colorTwoMeta()?.saturation }}</td>\r\n        </tr>\r\n        <tr>\r\n          <td>Lightness</td>\r\n          <td>{{ colorTwoMeta()?.lightness }}</td>\r\n        </tr>\r\n        <tr>\r\n          <td>Chroma</td>\r\n          <td>{{ colorTwoMeta()?.chroma }}</td>\r\n        </tr>\r\n        <tr>\r\n          <td>Hue</td>\r\n          <td>{{ colorTwoMeta()?.hue }}</td>\r\n        </tr>\r\n      </tbody>\r\n    </table>\r\n  </div>\r\n</div>\r\n"
         },
         {
             "name": "PageComponent",
@@ -3398,7 +3283,7 @@
         },
         {
             "name": "PaletteTableComponent",
-            "id": "component-PaletteTableComponent-2479b5e6db4f725d59db35a9abac76480357566bea9c7c3c2b270c1f12e808def277ad7279178f539758dab7f1efe1f8e603dbbd93f7af7d8d7fc86abc322ada",
+            "id": "component-PaletteTableComponent-7328d72a5e3a1f614fb03d666b5296e76edf92b4173eae715740d9e877d196ca2440c5967afb9dcc821e9a45eb09ba786e435b9c53ae25681d9ad74a0dbc041c",
             "file": "src/app/_components/palette-table/palette-table.component.ts",
             "encapsulation": [],
             "entryComponents": [],
@@ -3425,7 +3310,7 @@
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 25,
+                    "line": 34,
                     "required": false
                 },
                 {
@@ -3437,7 +3322,7 @@
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 26,
+                    "line": 35,
                     "required": false
                 }
             ],
@@ -3447,7 +3332,7 @@
                     "defaultValue": "new EventEmitter<TableColorCell>()",
                     "deprecated": false,
                     "deprecationMessage": "",
-                    "line": 28,
+                    "line": 37,
                     "type": "EventEmitter"
                 }
             ],
@@ -3461,7 +3346,10 @@
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 33
+                    "line": 42,
+                    "modifierKind": [
+                        148
+                    ]
                 },
                 {
                     "name": "cus",
@@ -3472,18 +3360,24 @@
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 30
+                    "line": 39,
+                    "modifierKind": [
+                        148
+                    ]
                 },
                 {
                     "name": "dataStruct",
-                    "defaultValue": "[]",
+                    "defaultValue": "signal<TableData>([])",
                     "deprecated": false,
                     "deprecationMessage": "",
-                    "type": "TableData",
+                    "type": "",
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 38
+                    "line": 45,
+                    "modifierKind": [
+                        148
+                    ]
                 },
                 {
                     "name": "lightSteps",
@@ -3494,31 +3388,27 @@
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 32
+                    "line": 41,
+                    "modifierKind": [
+                        148
+                    ]
                 },
                 {
                     "name": "tableHeaders",
-                    "defaultValue": "[]",
+                    "defaultValue": "computed<number[]>(() => {\r\n    const data = this.dataStruct();\r\n    if (!data.length || !data[0].length) return [];\r\n    return data[0].map((cell) => cell.chroma);\r\n  })",
                     "deprecated": false,
                     "deprecationMessage": "",
-                    "type": "Array<number>",
+                    "type": "",
                     "indexKey": "",
                     "optional": false,
                     "description": "",
-                    "line": 35
+                    "line": 46,
+                    "modifierKind": [
+                        148
+                    ]
                 }
             ],
             "methodsClass": [
-                {
-                    "name": "getTableColumnHeaders",
-                    "args": [],
-                    "optional": false,
-                    "returnType": "void",
-                    "typeParameters": [],
-                    "line": 48,
-                    "deprecated": false,
-                    "deprecationMessage": ""
-                },
                 {
                     "name": "getTableData",
                     "args": [
@@ -3532,7 +3422,7 @@
                     "optional": false,
                     "returnType": "any",
                     "typeParameters": [],
-                    "line": 72,
+                    "line": 69,
                     "deprecated": false,
                     "deprecationMessage": "",
                     "modifierKind": [
@@ -3563,7 +3453,7 @@
                     "optional": false,
                     "returnType": "\"white\" | \"black\"",
                     "typeParameters": [],
-                    "line": 68,
+                    "line": 65,
                     "deprecated": false,
                     "deprecationMessage": "",
                     "jsdoctags": [
@@ -3597,7 +3487,7 @@
                     "optional": false,
                     "returnType": "void",
                     "typeParameters": [],
-                    "line": 62,
+                    "line": 59,
                     "deprecated": false,
                     "deprecationMessage": "",
                     "jsdoctags": [
@@ -3631,7 +3521,7 @@
             "description": "",
             "rawdescription": "\n",
             "type": "component",
-            "sourceCode": "import { Component, Output, EventEmitter, inject, input, effect } from '@angular/core';\r\nimport { ColorUtilService } from '../../services/color-util.service';\r\n\r\nexport class TableColorCell {\r\n  color: string = '';\r\n  lightness: number = NaN;\r\n  chroma: number = NaN;\r\n  hue: number = NaN;\r\n  deltaE: number = NaN;\r\n  deltaLightness: number = NaN;\r\n  deltaChroma: number = NaN;\r\n}\r\n\r\nexport type TableRow = Array<TableColorCell>;\r\n\r\nexport type TableData = Array<TableRow>;\r\n\r\n@Component({\r\n  selector: 'app-palette-table',\r\n  templateUrl: './palette-table.component.html',\r\n  styleUrls: ['./palette-table.component.scss'],\r\n  standalone: true,\r\n})\r\nexport class PaletteTableComponent {\r\n  color = input<string>('');\r\n  debug = input<boolean>(false);\r\n\r\n  @Output() selectedColor = new EventEmitter<TableColorCell>();\r\n\r\n  cus = inject(ColorUtilService);\r\n\r\n  lightSteps = 5;\r\n  chromaSteps = 14;\r\n\r\n  tableHeaders: Array<number> = [];\r\n\r\n  // An array of arrays where each array is a 'row' of data, and objects are cells of data.\r\n  dataStruct: TableData = [];\r\n\r\n  constructor() {\r\n    effect(() => {\r\n      const color = this.color();\r\n\r\n      this.getTableData(color);\r\n    });\r\n  }\r\n\r\n  getTableColumnHeaders() {\r\n    const headers = [];\r\n\r\n    const sampleRow = this.dataStruct[0];\r\n\r\n    for (let i = 0; i < sampleRow.length; i++) {\r\n      const curCell = sampleRow[i];\r\n\r\n      headers.push(curCell.chroma);\r\n    }\r\n\r\n    this.tableHeaders = headers;\r\n  }\r\n\r\n  selectColor(rowNum: number, columnNum: number) {\r\n    const targetColor = this.dataStruct[rowNum][columnNum];\r\n\r\n    this.selectedColor.emit(targetColor);\r\n  }\r\n\r\n  getTextColor(bkgdColor: string) {\r\n    return (this.cus.calcWcag2('white', bkgdColor) as number) >= 7 ? 'white' : 'black';\r\n  }\r\n\r\n  async getTableData(color: string) {\r\n    if (color) {\r\n      this.dataStruct = await this.cus.generateAllOklchVariants(\r\n        color,\r\n        this.lightSteps,\r\n        this.chromaSteps\r\n      );\r\n\r\n      this.getTableColumnHeaders();\r\n    } else {\r\n      if (this.debug()) {\r\n        console.warn(`no color for palette table`);\r\n      }\r\n    }\r\n  }\r\n}\r\n",
+            "sourceCode": "import {\r\n  Component,\r\n  Output,\r\n  EventEmitter,\r\n  inject,\r\n  input,\r\n  signal,\r\n  computed,\r\n  effect,\r\n} from '@angular/core';\r\nimport { ColorUtilService } from '../../services/color-util.service';\r\n\r\nexport class TableColorCell {\r\n  color: string = '';\r\n  lightness: number = NaN;\r\n  chroma: number = NaN;\r\n  hue: number = NaN;\r\n  deltaE: number = NaN;\r\n  deltaLightness: number = NaN;\r\n  deltaChroma: number = NaN;\r\n}\r\n\r\nexport type TableRow = Array<TableColorCell>;\r\n\r\nexport type TableData = Array<TableRow>;\r\n\r\n@Component({\r\n  selector: 'app-palette-table',\r\n  templateUrl: './palette-table.component.html',\r\n  styleUrls: ['./palette-table.component.scss'],\r\n  standalone: true,\r\n})\r\nexport class PaletteTableComponent {\r\n  color = input<string>('');\r\n  debug = input<boolean>(false);\r\n\r\n  @Output() selectedColor = new EventEmitter<TableColorCell>();\r\n\r\n  readonly cus = inject(ColorUtilService);\r\n\r\n  readonly lightSteps = 5;\r\n  readonly chromaSteps = 14;\r\n\r\n  // Signals for table data and headers\r\n  readonly dataStruct = signal<TableData>([]);\r\n  readonly tableHeaders = computed<number[]>(() => {\r\n    const data = this.dataStruct();\r\n    if (!data.length || !data[0].length) return [];\r\n    return data[0].map((cell) => cell.chroma);\r\n  });\r\n\r\n  constructor() {\r\n    effect(() => {\r\n      const color = this.color();\r\n      this.getTableData(color);\r\n    });\r\n  }\r\n\r\n  selectColor(rowNum: number, columnNum: number) {\r\n    const data = this.dataStruct();\r\n    const targetColor = data[rowNum][columnNum];\r\n    this.selectedColor.emit(targetColor);\r\n  }\r\n\r\n  getTextColor(bkgdColor: string) {\r\n    return (this.cus.calcWcag2('white', bkgdColor) as number) >= 7 ? 'white' : 'black';\r\n  }\r\n\r\n  async getTableData(color: string) {\r\n    if (!color) {\r\n      if (this.debug()) {\r\n        console.warn(`no color for palette table`);\r\n      }\r\n      this.dataStruct.set([]);\r\n      return;\r\n    }\r\n    const data = await this.cus.generateAllOklchVariants(color, this.lightSteps, this.chromaSteps);\r\n    this.dataStruct.set(data);\r\n  }\r\n}\r\n",
             "assetsDirs": [],
             "styleUrlsData": [
                 {
@@ -3646,10 +3536,10 @@
                 "deprecated": false,
                 "deprecationMessage": "",
                 "args": [],
-                "line": 38
+                "line": 50
             },
             "extends": [],
-            "templateData": "<div class=\"comp-container\">\r\n  @if (dataStruct) {\r\n  <table [style.backgroundColor]=\"color\">\r\n    <caption class=\"sr-only\">\r\n      Collection of colors sharing the same hue organized by chroma as columns,\r\n      and lightness as rows. Selecting a button in the table will copy the its\r\n      color to the clipboard.\r\n    </caption>\r\n    <thead>\r\n      <tr class=\"sr-only\">\r\n        <!-- <tr> -->\r\n        <td>&nbsp;</td>\r\n\r\n        @for (header of tableHeaders; track $index) {\r\n        <th>{{ header.toFixed(5) }}</th>\r\n        }\r\n      </tr>\r\n    </thead>\r\n    <tbody>\r\n      @for (row of dataStruct; track i; let i = $index) {\r\n      <tr>\r\n        <th class=\"sr-only\">{{ row[0][\"lightness\"].toFixed(5) }}</th>\r\n\r\n        @for (cell of row; track j; let j = $index) {\r\n        <td>\r\n          <div>\r\n            @if (cell.color) {\r\n            <button\r\n              [style.backgroundColor]=\"cell.color ? cell.color : 'transparent'\"\r\n              [style.color]=\"getTextColor(cell.color)\"\r\n              [style.borderColor]=\"cell.deltaE === 0 ? 'white' : cell.color\"\r\n              [style.backgroundColor]=\"cell.deltaE === 0 ? 'black' : cell.color\"\r\n              (click)=\"selectColor(i, j)\"\r\n            >\r\n              <span class=\"sr-only\">{{ cell.color }}, </span>\r\n              <span class=\"sr-only\">{{ cell.deltaLightness }}%, </span>\r\n              <span class=\"sr-only\">{{ cell.deltaChroma }}%, </span>\r\n              <span class=\"sr-only\">{{ cell.deltaE }}</span>\r\n            </button>\r\n\r\n            } @else {\r\n            <div class=\"no-color\">\r\n              <p class=\"sr-only\">color out of sRGB gamut</p>\r\n            </div>\r\n            }\r\n          </div>\r\n        </td>\r\n        }\r\n      </tr>\r\n      }\r\n    </tbody>\r\n  </table>\r\n  }\r\n</div>\r\n"
+            "templateData": "<div class=\"comp-container\">\r\n  @if (dataStruct().length) {\r\n  <table [style.backgroundColor]=\"color()\">\r\n    <caption class=\"sr-only\">\r\n      Collection of colors sharing the same hue organized by chroma as columns, and lightness as\r\n      rows. Selecting a button in the table will copy the its color to the clipboard.\r\n    </caption>\r\n    <thead>\r\n      <tr class=\"sr-only\">\r\n        <td>&nbsp;</td>\r\n        @for (header of tableHeaders(); track $index) {\r\n        <th>{{ header.toFixed(5) }}</th>\r\n        }\r\n      </tr>\r\n    </thead>\r\n    <tbody>\r\n      @for (row of dataStruct(); track i; let i = $index) {\r\n      <tr>\r\n        <th class=\"sr-only\">{{ row[0]['lightness'].toFixed(5) }}</th>\r\n        @for (cell of row; track j; let j = $index) {\r\n        <td>\r\n          <div>\r\n            @if (cell.color) {\r\n            <button\r\n              [style.backgroundColor]=\"cell.deltaE === 0 ? 'black' : cell.color\"\r\n              [style.color]=\"getTextColor(cell.color)\"\r\n              [style.borderColor]=\"cell.deltaE === 0 ? 'white' : cell.color\"\r\n              (click)=\"selectColor(i, j)\"\r\n            >\r\n              <span class=\"sr-only\">{{ cell.color }}, </span>\r\n              <span class=\"sr-only\">{{ cell.deltaLightness }}%, </span>\r\n              <span class=\"sr-only\">{{ cell.deltaChroma }}%, </span>\r\n              <span class=\"sr-only\">{{ cell.deltaE }}</span>\r\n            </button>\r\n            } @else {\r\n            <div class=\"no-color\">\r\n              <p class=\"sr-only\">color out of sRGB gamut</p>\r\n            </div>\r\n            }\r\n          </div>\r\n        </td>\r\n        }\r\n      </tr>\r\n      }\r\n    </tbody>\r\n  </table>\r\n  }\r\n</div>\r\n"
         }
     ],
     "modules": [],
@@ -3923,7 +3813,7 @@
                 "linktype": "component",
                 "name": "MetadataComponent",
                 "coveragePercent": 0,
-                "coverageCount": "0/14",
+                "coverageCount": "0/10",
                 "status": "low"
             },
             {
@@ -3950,7 +3840,7 @@
                 "linktype": "component",
                 "name": "PaletteTableComponent",
                 "coveragePercent": 0,
-                "coverageCount": "0/14",
+                "coverageCount": "0/13",
                 "status": "low"
             },
             {
