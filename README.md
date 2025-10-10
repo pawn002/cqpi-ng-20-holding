@@ -1,6 +1,16 @@
 # Color Pair Quick Iterator
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 20.3.4.
+_This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 20.3.4._
+
+This repo contains the the files for inclusive design tool, Color Pair Quick Iterator (CPQI).
+
+CPQI is meant to be used in conjunction with design tools to quick check and iterate on colors pairs for inclusive contrast.
+
+## Useful Links
+
+- [Current Tool](https://pawn002.github.io/color-pair-quick-iterator/)
+- [Myndex APCA Tool](https://apcacontrast.com/)
+- [Myndex BPCA](https://github.com/Myndex/bridge-pca)
 
 ## Development server
 

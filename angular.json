@@ -3,7 +3,7 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
-    "cqpi-ng-20-holding": {
+    "color-pair-quick-iterator": {
       "projectType": "application",
       "schematics": {
         "@schematics/angular:component": {
@@ -26,12 +26,11 @@
                 "input": "public"
               }
             ],
-            "styles": [
-              "src/styles.scss"
-            ]
+            "styles": ["src/styles.scss"]
           },
           "configurations": {
             "production": {
+              "baseHref": "https://pawn002.github.io/color-pair-quick-iterator/",
               "budgets": [
                 {
                   "type": "initial",
@@ -58,10 +57,10 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "cqpi-ng-20-holding:build:production"
+              "buildTarget": "color-pair-quick-iterator:build:production"
             },
             "development": {
-              "buildTarget": "cqpi-ng-20-holding:build:development"
+              "buildTarget": "color-pair-quick-iterator:build:development"
             }
           },
           "defaultConfiguration": "development"
@@ -80,23 +79,16 @@
                 "input": "public"
               }
             ],
-            "styles": [
-              "src/styles.scss"
-            ]
+            "styles": ["src/styles.scss"]
           }
         },
         "storybook": {
           "builder": "@storybook/angular:start-storybook",
           "options": {
             "configDir": ".storybook",
-            "browserTarget": "cqpi-ng-20-holding:build",
+            "browserTarget": "color-pair-quick-iterator:build",
             "compodoc": true,
-            "compodocArgs": [
-              "-e",
-              "json",
-              "-d",
-              "."
-            ],
+            "compodocArgs": ["-e", "json", "-d", "."],
             "port": 6006
           }
         },
@@ -104,14 +96,9 @@
           "builder": "@storybook/angular:build-storybook",
           "options": {
             "configDir": ".storybook",
-            "browserTarget": "cqpi-ng-20-holding:build",
+            "browserTarget": "color-pair-quick-iterator:build",
             "compodoc": true,
-            "compodocArgs": [
-              "-e",
-              "json",
-              "-d",
-              "."
-            ],
+            "compodocArgs": ["-e", "json", "-d", "."],
             "outputDir": "storybook-static"
           }
         }
