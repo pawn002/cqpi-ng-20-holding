@@ -3,9 +3,9 @@
     <div class="title-and-score">
       <h1>Colors Contrast</h1>
       <app-color-contrast
-        [colorOne]="colorPickerOneComparedColor"
-        [colorTwo]="colorPickerTwoComparedColor"
-        [contrastType]="contrastType"
+        [colorOne]="colorPickerOneComparedColor()"
+        [colorTwo]="colorPickerTwoComparedColor()"
+        [contrastType]="contrastType()"
       ></app-color-contrast>
     </div>
 
@@ -43,21 +43,21 @@
       <app-color-picker
         [inputId]="'cp-0'"
         [inputName]="'Foreground Color'"
-        [comparedColor]="colorPickerOneComparedColor"
+        [comparedColor]="colorPickerOneComparedColor()"
         (selectedColor)="handleColorInputInput('One', $event)"
-        [color]="colorPickerOneSelectedColor"
+        [color]="colorPickerOneSelectedColor()"
       ></app-color-picker>
       <app-color-slider
         [id]="'slider-0'"
         [name]="'Foreground Slider'"
-        [color]="colorPickerOneSelectedColor"
-        [constantChroma]="constantChroma"
+        [color]="colorPickerOneSelectedColor()"
+        [constantChroma]="constantChroma()"
         (colorVariant)="handleSliderInputInput('One', $event)"
         [resetSlider]="resetSlider"
-        [showGradient]="showGradient"
+        [showGradient]="showGradient()"
       ></app-color-slider>
       <app-copy-to-clipboard-button
-        [color]="colorPickerOneComparedColor"
+        [color]="colorPickerOneComparedColor()"
         (copyEvent)="handleCopyEvent($event)"
       ></app-copy-to-clipboard-button>
     </div>
@@ -67,7 +67,7 @@
 
       <div class="content">
         <app-palette-table
-          [color]="colorPickerOneSelectedColor"
+          [color]="colorPickerOneSelectedColor()"
           (selectedColor)="handleColorPaletteButtonEvent('One', $event)"
         ></app-palette-table>
       </div>
@@ -79,21 +79,21 @@
       <app-color-picker
         [inputId]="'cp-1'"
         [inputName]="'Background Color'"
-        [comparedColor]="colorPickerTwoComparedColor"
-        [color]="colorPickerTwoSelectedColor"
+        [comparedColor]="colorPickerTwoComparedColor()"
+        [color]="colorPickerTwoSelectedColor()"
         (selectedColor)="handleColorInputInput('Two', $event)"
       ></app-color-picker>
       <app-color-slider
         [id]="'slider-1'"
         [name]="'Backgroundground Slider'"
-        [color]="colorPickerTwoSelectedColor"
-        [constantChroma]="constantChroma"
+        [color]="colorPickerTwoSelectedColor()"
+        [constantChroma]="constantChroma()"
         (colorVariant)="handleSliderInputInput('Two', $event)"
         [resetSlider]="resetSlider"
-        [showGradient]="showGradient"
+        [showGradient]="showGradient()"
       ></app-color-slider>
       <app-copy-to-clipboard-button
-        [color]="colorPickerTwoComparedColor"
+        [color]="colorPickerTwoComparedColor()"
         (copyEvent)="handleCopyEvent($event)"
       ></app-copy-to-clipboard-button>
     </div>
@@ -103,7 +103,7 @@
 
       <div class="content">
         <app-palette-table
-          [color]="colorPickerTwoSelectedColor"
+          [color]="colorPickerTwoSelectedColor()"
           (selectedColor)="handleColorPaletteButtonEvent('Two', $event)"
         ></app-palette-table>
       </div>
@@ -113,7 +113,7 @@
   <section class="quick-actions">
     <button
       (click)="swapColors()"
-      [disabled]="!colorPickerOneSelectedColor || !colorPickerTwoSelectedColor"
+      [disabled]="!colorPickerOneSelectedColor() || !colorPickerTwoSelectedColor()"
     >
       <span class="sr-only">Swap Selected Colors</span>
       <svg
@@ -265,7 +265,7 @@
                 name="contrastType"
                 id="ct-apca"
                 (change)="radioChange('apca')"
-                checked
+                [checked]="contrastType() === 'apca'"
               />
             </div>
             <div class="radio-group">
@@ -275,7 +275,13 @@
                   value is obtainable on Color Metadata section under Differences.</span
                 >
               </label>
-              <input type="radio" name="contrastType" id="ct-bpca" (change)="radioChange('bpca')" />
+              <input
+                type="radio"
+                name="contrastType"
+                id="ct-bpca"
+                (change)="radioChange('bpca')"
+                [checked]="contrastType() === 'bpca'"
+              />
             </div>
             <div class="radio-group">
               <label for="ct-apca-object"
@@ -290,6 +296,7 @@
                 name="contrastType"
                 id="ct-apca-object"
                 (change)="radioChange('apca object')"
+                [checked]="contrastType() === 'apca object'"
               />
             </div>
           </div>
@@ -302,7 +309,7 @@
             <div class="checkbox-group">
               <label for="option-const-chroma">Constant chroma</label>
               <input
-                checked
+                [checked]="constantChroma()"
                 type="checkbox"
                 name="Constant Chroma Toggle"
                 id="option-const-chroma"
@@ -312,7 +319,7 @@
             <div class="checkbox-group">
               <label for="option-show-grad">Show Gradient</label>
               <input
-                checked
+                [checked]="showGradient()"
                 type="checkbox"
                 name="Show Gradient Toggle"
                 id="option-show-grad"
@@ -334,8 +341,8 @@
       <summary>Descriptive data about your inputted colors.</summary>
 
       <app-metadata
-        [colorOne]="colorPickerOneComparedColor"
-        [colorTwo]="colorPickerTwoComparedColor"
+        [colorOne]="colorPickerOneComparedColor()"
+        [colorTwo]="colorPickerTwoComparedColor()"
       ></app-metadata>
     </details>
   </section>
@@ -505,6 +512,6 @@
   </section>
 
   <div class="alert">
-    <app-alert [alertMessage]="currentAlertMessage"></app-alert>
+    <app-alert [alertMessage]="currentAlertMessage()"></app-alert>
   </div>
 </div>

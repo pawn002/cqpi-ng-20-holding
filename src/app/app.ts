@@ -32,38 +32,38 @@ import { PaletteTableComponent } from './_components/palette-table/palette-table
 export class App implements AfterViewInit {
   cus = inject(ColorUtilService);
 
-  colorPickerOneSelectedColor: string = '';
-  colorPickerOneComparedColor: string = '';
+  colorPickerOneSelectedColor = signal<string>('');
+  colorPickerOneComparedColor = signal<string>('');
 
-  colorPickerTwoSelectedColor: string = '';
-  colorPickerTwoComparedColor: string = '';
+  colorPickerTwoSelectedColor = signal<string>('');
+  colorPickerTwoComparedColor = signal<string>('');
 
-  contrastType: ContrastType | 'apca object' = 'apca';
+  contrastType = signal<ContrastType | 'apca object'>('apca');
 
   resetSlider: ResetObject | null = null;
 
-  constantChroma: boolean = true;
-  showGradient: boolean = true;
+  constantChroma = signal<boolean>(true);
+  showGradient = signal<boolean>(true);
 
-  currentAlertMessage: AlertMessagObj = new AlertMessagObj();
+  currentAlertMessage = signal<AlertMessagObj>(new AlertMessagObj());
 
   handleColorInputInput(inputNumber: 'One' | 'Two', event: string) {
     if (inputNumber === 'One') {
-      this.colorPickerOneSelectedColor = event;
+      this.colorPickerOneSelectedColor.set(event);
     }
 
     if (inputNumber === 'Two') {
-      this.colorPickerTwoSelectedColor = event;
+      this.colorPickerTwoSelectedColor.set(event);
     }
   }
 
   handleSliderInputInput(inputNumber: 'One' | 'Two', event: string | null) {
     if (inputNumber === 'One' && event) {
-      this.colorPickerOneComparedColor = event;
+      this.colorPickerOneComparedColor.set(event);
     }
 
     if (inputNumber === 'Two' && event) {
-      this.colorPickerTwoComparedColor = event;
+      this.colorPickerTwoComparedColor.set(event);
     }
   }
 
@@ -77,11 +77,11 @@ export class App implements AfterViewInit {
 
   handleColorPaletteButtonEvent(paletteChartNum: 'One' | 'Two', event: TableColorCell) {
     if (paletteChartNum === 'One') {
-      this.colorPickerOneSelectedColor = event.color;
+      this.colorPickerOneSelectedColor.set(event.color);
     }
 
     if (paletteChartNum === 'Two') {
-      this.colorPickerTwoSelectedColor = event.color;
+      this.colorPickerTwoSelectedColor.set(event.color);
     }
 
     this.alertUser({
@@ -91,14 +91,14 @@ export class App implements AfterViewInit {
 
   radioChange(changeTo: ContrastType | 'apca object') {
     console.log(changeTo);
-    this.contrastType = changeTo;
+    this.contrastType.set(changeTo);
   }
 
   toggleConstantChroma(event: Event) {
     const inputElement = event.target as HTMLInputElement;
     const checked = inputElement.checked;
 
-    this.constantChroma = checked ? true : false;
+    this.constantChroma.set(checked ? true : false);
 
     this.resetSliders();
   }
@@ -107,7 +107,7 @@ export class App implements AfterViewInit {
     const inputElement = event.target as HTMLInputElement;
     const checked = inputElement.checked;
 
-    this.showGradient = checked ? true : false;
+    this.showGradient.set(checked ? true : false);
   }
 
   swapColors() {
@@ -116,11 +116,11 @@ export class App implements AfterViewInit {
 
       switch (type) {
         case 'fg':
-          color = this.colorPickerOneSelectedColor;
+          color = this.colorPickerOneSelectedColor();
 
           break;
         case 'bg':
-          color = this.colorPickerTwoSelectedColor;
+          color = this.colorPickerTwoSelectedColor();
 
           break;
 
@@ -142,9 +142,9 @@ export class App implements AfterViewInit {
     };
 
     if (newPairing.foreground && newPairing.background) {
-      this.colorPickerOneSelectedColor = newPairing.foreground;
+      this.colorPickerOneSelectedColor.set(newPairing.foreground);
 
-      this.colorPickerTwoSelectedColor = newPairing.background;
+      this.colorPickerTwoSelectedColor.set(newPairing.background);
 
       this.alertUser({ message: 'Swapped foreground and background colors.' });
     } else {
@@ -158,8 +158,8 @@ export class App implements AfterViewInit {
     const randomColorPair = await this.cus.adjustColorPairForPresentation(initColorPair);
 
     setTimeout(() => {
-      this.colorPickerOneSelectedColor = randomColorPair[0];
-      this.colorPickerTwoSelectedColor = randomColorPair[1];
+      this.colorPickerOneSelectedColor.set(randomColorPair[0]);
+      this.colorPickerTwoSelectedColor.set(randomColorPair[1]);
 
       if (!initialAppColors) {
         this.alertUser({
@@ -176,15 +176,15 @@ export class App implements AfterViewInit {
   }
 
   async matchChromas() {
-    if (this.colorPickerOneSelectedColor && this.colorPickerTwoSelectedColor) {
+    if (this.colorPickerOneSelectedColor() && this.colorPickerTwoSelectedColor()) {
       const matchedColors = await this.cus.matchChromas([
-        this.colorPickerOneSelectedColor,
-        this.colorPickerTwoSelectedColor,
+        this.colorPickerOneSelectedColor(),
+        this.colorPickerTwoSelectedColor(),
       ]);
 
       if (matchedColors.success && matchedColors.colors && matchedColors.chroma) {
-        this.colorPickerOneSelectedColor = matchedColors.colors[0];
-        this.colorPickerTwoSelectedColor = matchedColors.colors[1];
+        this.colorPickerOneSelectedColor.set(matchedColors.colors[0]);
+        this.colorPickerTwoSelectedColor.set(matchedColors.colors[1]);
 
         this.alertUser({
           message: `Chroma matched foreground and background colors.`,
@@ -196,11 +196,10 @@ export class App implements AfterViewInit {
   }
 
   alertUser(message: AlertMessagObj) {
-    this.currentAlertMessage = message;
+    this.currentAlertMessage.set(message);
   }
 
   ngAfterViewInit(): void {
-    // console.log('init');
-    // this.setRandomColorPair(true);
+    this.setRandomColorPair(true);
   }
 }
